@@ -46,7 +46,9 @@ async fn subscribers_list_sends_auth_and_query_params() {
     ])
     .assert()
     .success()
-    .stdout(predicate::str::contains("BandTools"))
+    .stdout(predicate::str::contains(
+        "| __ )  __ _ _ __   __| |_   _|__   ___ | |___",
+    ))
     .stdout(predicate::str::contains("fan@example.com").not())
     .stdout(predicate::str::contains("req_test"));
 }

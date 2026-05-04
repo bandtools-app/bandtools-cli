@@ -33,13 +33,16 @@ pub fn print_value(format: OutputFormat, value: &Value) -> Result<()> {
 
 fn render_tui(value: &Value, width: u16, colour: bool) -> Result<String> {
     let model = ResponseModel::from_value(value)?;
+    let width = width.clamp(40, 140);
+    let header = HeaderModel::for_width(width);
+    let header_height = header.height();
     let content_lines = model.content_line_count();
     let footer_height = model.footer_line_count().saturating_add(2).clamp(3, 8) as u16;
     let height = content_lines
-        .saturating_add(7)
+        .saturating_add(header_height as usize)
+        .saturating_add(4)
         .saturating_add(footer_height as usize)
         .clamp(12, 60) as u16;
-    let width = width.clamp(40, 140);
 
     let backend = TestBackend::new(width, height);
     let mut terminal = Terminal::new(backend).context("failed to create terminal renderer")?;
@@ -51,7 +54,7 @@ fn render_tui(value: &Value, width: u16, colour: bool) -> Result<String> {
                 .margin(1)
                 .constraints(
                     [
-                        Constraint::Length(3),
+                        Constraint::Length(header_height),
                         Constraint::Min(5),
                         Constraint::Length(footer_height),
                     ]
@@ -59,20 +62,10 @@ fn render_tui(value: &Value, width: u16, colour: bool) -> Result<String> {
                 )
                 .split(frame.size());
 
-            let title = Paragraph::new(Spans::from(vec![
-                Span::styled(
-                    "BandTools",
-                    Style::default()
-                        .fg(Color::Cyan)
-                        .add_modifier(Modifier::BOLD),
-                ),
-                Span::raw(" response"),
-            ]))
-            .block(
+            let title = Paragraph::new(header.lines()).block(
                 Block::default()
                     .borders(Borders::ALL)
-                    .border_style(Style::default().fg(Color::Cyan))
-                    .title(Span::styled("bt", Style::default().fg(Color::Yellow))),
+                    .border_style(Style::default().fg(Color::Cyan)),
             );
             frame.render_widget(title, chunks[0]);
 
@@ -89,6 +82,71 @@ fn render_tui(value: &Value, width: u16, colour: bool) -> Result<String> {
         .context("failed to render terminal response")?;
 
     Ok(buffer_to_string(terminal.backend().buffer(), colour))
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum HeaderModel {
+    Logo,
+    Compact,
+}
+
+impl HeaderModel {
+    fn for_width(width: u16) -> Self {
+        if width >= 64 {
+            Self::Logo
+        } else {
+            Self::Compact
+        }
+    }
+
+    fn height(self) -> u16 {
+        match self {
+            Self::Logo => 7,
+            Self::Compact => 3,
+        }
+    }
+
+    fn lines(self) -> Vec<Spans<'static>> {
+        match self {
+            Self::Logo => vec![
+                Spans::from(Span::styled(
+                    r" ____                  _ _____           _     ",
+                    logo_style(),
+                )),
+                Spans::from(Span::styled(
+                    r"| __ )  __ _ _ __   __| |_   _|__   ___ | |___ ",
+                    logo_style(),
+                )),
+                Spans::from(Span::styled(
+                    r"|  _ \ / _` | '_ \ / _` | | |/ _ \ / _ \| / __|",
+                    logo_style(),
+                )),
+                Spans::from(Span::styled(
+                    r"| |_) | (_| | | | | (_| | | | (_) | (_) | \__ \",
+                    logo_style(),
+                )),
+                Spans::from(Span::styled(
+                    r"|____/ \__,_|_| |_|\__,_| |_|\___/ \___/|_|___/",
+                    logo_style(),
+                )),
+            ],
+            Self::Compact => vec![Spans::from(vec![
+                Span::styled(
+                    "BandTools",
+                    Style::default()
+                        .fg(Color::Cyan)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::raw(" response"),
+            ])],
+        }
+    }
+}
+
+fn logo_style() -> Style {
+    Style::default()
+        .fg(Color::Cyan)
+        .add_modifier(Modifier::BOLD)
 }
 
 #[derive(Debug)]
@@ -567,7 +625,7 @@ mod tests {
 
         let rendered = render_tui(&value, 100, false).unwrap();
 
-        assert!(rendered.contains("BandTools"));
+        assert!(rendered.contains(r"| __ )  __ _ _ __   __| |_   _|__   ___ | |___ "));
         assert!(rendered.contains("fan@example.com"));
         assert!(rendered.contains("req_test"));
         assert!(rendered.contains("page 1 of 1, 1 total"));
@@ -611,6 +669,7 @@ mod tests {
 
         let rendered = render_tui(&value, 100, true).unwrap();
 
+        assert!(rendered.contains(r"____                  _ _____"));
         assert!(rendered.contains("\x1b[36m"));
         assert!(rendered.contains("\x1b[92m"));
         assert!(rendered.contains("\x1b[1;33m"));
