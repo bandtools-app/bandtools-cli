@@ -27,6 +27,9 @@ pub struct Cli {
     #[arg(long, global = true, help = "Emit compact JSON")]
     pub json: bool,
 
+    #[arg(long, global = true, help = "Disable colour in terminal output")]
+    pub no_colour: bool,
+
     #[command(subcommand)]
     pub command: Command,
 }

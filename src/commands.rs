@@ -15,7 +15,9 @@ pub fn run(cli: Cli) -> Result<()> {
     let format = if cli.json {
         OutputFormat::Json
     } else {
-        OutputFormat::Tui
+        OutputFormat::Tui {
+            colour: !cli.no_colour,
+        }
     };
 
     if let Command::Config(command) = cli.command {

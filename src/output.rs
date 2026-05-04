@@ -14,14 +14,16 @@ use tui::{
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum OutputFormat {
     Json,
-    Tui,
+    Tui { colour: bool },
 }
 
 impl OutputFormat {
     pub fn render(self, value: &Value) -> Result<String> {
         match self {
             OutputFormat::Json => serde_json::to_string(value).context("failed to render JSON"),
-            OutputFormat::Tui => render_tui(value, terminal_width(), stdout_supports_colour()),
+            OutputFormat::Tui { colour } => {
+                render_tui(value, terminal_width(), colour && stdout_supports_colour())
+            }
         }
     }
 }
@@ -701,6 +703,24 @@ mod tests {
             OutputFormat::Json.render(&value).unwrap(),
             r#"{"data":{"ok":true}}"#
         );
+    }
+
+    #[test]
+    fn tui_output_can_be_rendered_without_colour() {
+        let value = json!({
+            "data": {
+                "name": "Release party",
+                "status": "confirmed"
+            },
+            "meta": {
+                "request_id": "req_test"
+            }
+        });
+
+        let rendered = render_tui(&value, 100, false).unwrap();
+
+        assert!(rendered.contains("Release party"));
+        assert!(!rendered.contains("\x1b["));
     }
 
     #[test]

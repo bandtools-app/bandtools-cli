@@ -76,6 +76,15 @@ bt subscribers list
 bt --json subscribers list
 ```
 
+Terminal output uses colour when stdout is an interactive terminal. Use
+`--no-colour` to keep the table layout but suppress ANSI colour:
+
+```sh
+bt --no-colour newsletters list --status draft
+```
+
+The standard `NO_COLOR` environment variable is also respected.
+
 ## Command Help
 
 Every command group and command supports built-in help:
