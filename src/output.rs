@@ -1,3 +1,5 @@
+use std::io::IsTerminal;
+
 use anyhow::{Context, Result};
 use serde_json::Value;
 use tui::{
@@ -19,7 +21,7 @@ impl OutputFormat {
     pub fn render(self, value: &Value) -> Result<String> {
         match self {
             OutputFormat::Json => serde_json::to_string(value).context("failed to render JSON"),
-            OutputFormat::Tui => render_tui(value),
+            OutputFormat::Tui => render_tui(value, terminal_width()),
         }
     }
 }
@@ -29,7 +31,7 @@ pub fn print_value(format: OutputFormat, value: &Value) -> Result<()> {
     Ok(())
 }
 
-fn render_tui(value: &Value) -> Result<String> {
+fn render_tui(value: &Value, width: u16) -> Result<String> {
     let model = ResponseModel::from_value(value)?;
     let content_lines = model.content_line_count();
     let footer_height = model.footer_line_count().saturating_add(2).clamp(3, 8) as u16;
@@ -37,7 +39,7 @@ fn render_tui(value: &Value) -> Result<String> {
         .saturating_add(7)
         .saturating_add(footer_height as usize)
         .clamp(12, 60) as u16;
-    let width = 100;
+    let width = width.clamp(40, 140);
 
     let backend = TestBackend::new(width, height);
     let mut terminal = Terminal::new(backend).context("failed to create terminal renderer")?;
@@ -199,7 +201,7 @@ impl ResponseModel {
                 let rows = rows
                     .iter()
                     .map(|row| Row::new(row.iter().map(|value| Cell::from(truncate(value, 36)))));
-                let widths = table_widths(columns.len());
+                let widths = array_table_widths(columns, area.width);
                 let table = Table::new(rows)
                     .header(header)
                     .block(Block::default().borders(Borders::ALL).title(title.as_str()))
@@ -218,7 +220,7 @@ impl ResponseModel {
                         Cell::from(value.clone()),
                     ])
                 });
-                let widths = [Constraint::Length(28), Constraint::Length(62)];
+                let widths = object_table_widths(area.width);
                 let table = Table::new(rows)
                     .block(Block::default().borders(Borders::ALL).title(title.as_str()))
                     .widths(&widths)
@@ -333,19 +335,56 @@ fn format_value(value: &Value) -> String {
     }
 }
 
-fn table_widths(count: usize) -> Vec<Constraint> {
-    match count {
-        0 | 1 => vec![Constraint::Percentage(100)],
-        2 => vec![Constraint::Percentage(35), Constraint::Percentage(65)],
-        3 => vec![
-            Constraint::Percentage(25),
-            Constraint::Percentage(35),
-            Constraint::Percentage(40),
-        ],
-        _ => (0..count)
-            .map(|_| Constraint::Ratio(1, count as u32))
-            .collect(),
+fn terminal_width() -> u16 {
+    if !std::io::stdout().is_terminal() {
+        return 100;
     }
+
+    terminal_size::terminal_size()
+        .map(|(width, _)| width.0)
+        .unwrap_or(100)
+}
+
+fn array_table_widths(columns: &[String], area_width: u16) -> Vec<Constraint> {
+    let count = columns.len();
+    if count == 0 {
+        return vec![Constraint::Percentage(100)];
+    }
+
+    let usable = area_width
+        .saturating_sub(2)
+        .saturating_sub((count.saturating_sub(1) * 2) as u16);
+    let equal_width = (usable / count as u16).max(6);
+
+    columns
+        .iter()
+        .map(|column| {
+            let desired = column_width_hint(column).min(equal_width.max(12));
+            Constraint::Length(desired)
+        })
+        .collect()
+}
+
+fn column_width_hint(column: &str) -> u16 {
+    match column {
+        "id" | "status" | "source" => 14,
+        "email_address" => 28,
+        "subject" | "name" => 24,
+        "confirmed" => 10,
+        "created_at" | "updated_at" => 20,
+        _ => 16,
+    }
+}
+
+fn object_table_widths(area_width: u16) -> [Constraint; 2] {
+    let usable = area_width.saturating_sub(4);
+    let key_width = usable.saturating_mul(35).saturating_div(100).clamp(12, 28);
+    let value_width = usable.saturating_sub(key_width).max(10);
+
+    [
+        Constraint::Length(key_width),
+        Constraint::Length(value_width),
+    ]
 }
 
 fn truncate(value: &str, max_chars: usize) -> String {
@@ -408,12 +447,26 @@ mod tests {
             }
         });
 
-        let rendered = OutputFormat::Tui.render(&value).unwrap();
+        let rendered = render_tui(&value, 100).unwrap();
 
         assert!(rendered.contains("BandTools"));
         assert!(rendered.contains("fan@example.com"));
         assert!(rendered.contains("req_test"));
         assert!(rendered.contains("page 1 of 1, 1 total"));
+    }
+
+    #[test]
+    fn tui_output_respects_narrow_terminal_width() {
+        let value = json!({
+            "data": {
+                "api_url": "http://localhost:3000/api/v1",
+                "config_path": "/tmp/bandtools/config.toml"
+            }
+        });
+
+        let rendered = render_tui(&value, 60).unwrap();
+
+        assert!(rendered.lines().all(|line| line.chars().count() <= 60));
     }
 
     #[test]
