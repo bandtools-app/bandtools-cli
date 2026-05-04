@@ -12,6 +12,7 @@ fn top_level_help_lists_command_groups() {
         .stdout(predicate::str::contains("automatic-newsletters"))
         .stdout(predicate::str::contains("--compact-json"))
         .stdout(predicate::str::contains("--no-colour"))
+        .stdout(predicate::str::contains("completions"))
         .stdout(predicate::str::contains("config"));
 }
 
@@ -47,6 +48,16 @@ fn config_commands_do_not_require_token() {
         .assert()
         .success()
         .stdout(predicate::str::contains("http://localhost:3000/api/v1"));
+}
+
+#[test]
+fn completions_command_does_not_require_token() {
+    let mut cmd = Command::cargo_bin("bt").unwrap();
+    cmd.args(["completions", "zsh"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("#compdef bt"))
+        .stdout(predicate::str::contains("newsletters"));
 }
 
 #[test]

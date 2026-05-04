@@ -1,6 +1,8 @@
 use std::path::PathBuf;
 
 use anyhow::{Result, bail};
+use clap::CommandFactory;
+use clap_complete::generate;
 use reqwest::Method;
 use serde_json::{Value, json};
 
@@ -12,34 +14,55 @@ use crate::{
 };
 
 pub fn run(cli: Cli) -> Result<()> {
-    let format = if cli.compact_json {
+    let Cli {
+        api_token,
+        api_url,
+        config: config_path,
+        json,
+        compact_json,
+        no_colour,
+        command,
+    } = cli;
+
+    let format = if compact_json {
         OutputFormat::Json { pretty: false }
-    } else if cli.json {
+    } else if json {
         OutputFormat::Json { pretty: true }
     } else {
-        OutputFormat::Tui {
-            colour: !cli.no_colour,
-        }
+        OutputFormat::Tui { colour: !no_colour }
     };
 
-    if let Command::Config(command) = cli.command {
-        return run_config(command, cli.config, format);
-    }
+    match command {
+        Command::Config(command) => run_config(command, config_path, format),
+        Command::Completions(command) => {
+            let mut clap_command = Cli::command();
+            generate(
+                command.shell,
+                &mut clap_command,
+                "bt",
+                &mut std::io::stdout(),
+            );
+            Ok(())
+        }
+        command => {
+            let config = config::resolve(ConfigOverrides {
+                api_token,
+                api_url,
+                config_path,
+            })?;
+            let client = ApiClient::new(&config)?;
 
-    let config = config::resolve(ConfigOverrides {
-        api_token: cli.api_token,
-        api_url: cli.api_url,
-        config_path: cli.config,
-    })?;
-    let client = ApiClient::new(&config)?;
-
-    match cli.command {
-        Command::Subscribers(command) => subscribers(&client, format, command),
-        Command::Account(command) => account(&client, format, command),
-        Command::Newsletters(command) => newsletters(&client, format, command),
-        Command::SharedNewsletters(command) => shared_newsletters(&client, format, command),
-        Command::AutomaticNewsletters(command) => automatic_newsletters(&client, format, command),
-        Command::Config(_) => unreachable!("handled above"),
+            match command {
+                Command::Subscribers(command) => subscribers(&client, format, command),
+                Command::Account(command) => account(&client, format, command),
+                Command::Newsletters(command) => newsletters(&client, format, command),
+                Command::SharedNewsletters(command) => shared_newsletters(&client, format, command),
+                Command::AutomaticNewsletters(command) => {
+                    automatic_newsletters(&client, format, command)
+                }
+                Command::Config(_) | Command::Completions(_) => unreachable!("handled above"),
+            }
+        }
     }
 }
 

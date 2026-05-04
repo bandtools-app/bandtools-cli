@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use clap::{Args, Parser, Subcommand, ValueEnum};
+use clap_complete::Shell;
 
 #[derive(Debug, Parser)]
 #[command(name = "bt", version, about = "BandTools command line interface")]
@@ -59,6 +60,14 @@ pub enum Command {
     AutomaticNewsletters(AutomaticNewslettersCommand),
     #[command(about = "Manage local bt configuration")]
     Config(ConfigCommand),
+    #[command(about = "Generate shell completion scripts")]
+    Completions(CompletionsCommand),
+}
+
+#[derive(Debug, Args)]
+pub struct CompletionsCommand {
+    #[arg(value_enum, help = "Shell to generate completions for")]
+    pub shell: Shell,
 }
 
 #[derive(Debug, Args)]

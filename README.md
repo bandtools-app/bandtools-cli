@@ -91,6 +91,24 @@ bt --no-colour newsletters list --status draft
 
 The standard `NO_COLOR` environment variable is also respected.
 
+## Shell Completions
+
+Generate shell completion scripts with the `completions` command:
+
+```sh
+bt completions zsh
+bt completions bash
+bt completions fish
+```
+
+The command writes the script to stdout so you can install it for your shell.
+For example, with zsh:
+
+```sh
+mkdir -p ~/.zfunc
+bt completions zsh > ~/.zfunc/_bt
+```
+
 ## Command Help
 
 Every command group and command supports built-in help:
