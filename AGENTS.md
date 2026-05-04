@@ -47,6 +47,8 @@ cargo clippy --all-targets -- -D warnings
 cargo test
 ```
 
+Use `cargo llvm-cov --all-targets --workspace` when changing test coverage or CI coverage reporting.
+
 Add or update tests when changing:
 
 - CLI parsing or help output.
