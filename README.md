@@ -69,11 +69,17 @@ unwrapped object and wraps it automatically.
 ## Output
 
 By default, `bt` renders API responses as terminal-friendly tables and panels.
-Use `--json` when you need raw compact JSON for scripts or piping:
+Use `--json` when you need pretty-printed JSON:
 
 ```sh
 bt subscribers list
 bt --json subscribers list
+```
+
+Use `--compact-json` when scripts or piping need raw compact JSON:
+
+```sh
+bt --compact-json subscribers list
 ```
 
 Terminal output uses colour when stdout is an interactive terminal. Use

@@ -24,8 +24,16 @@ pub struct Cli {
     #[arg(long, global = true, help = "Path to the BandTools config file")]
     pub config: Option<PathBuf>,
 
-    #[arg(long, global = true, help = "Emit compact JSON")]
+    #[arg(
+        long,
+        global = true,
+        conflicts_with = "compact_json",
+        help = "Emit pretty-printed JSON"
+    )]
     pub json: bool,
+
+    #[arg(long, global = true, help = "Emit compact JSON")]
+    pub compact_json: bool,
 
     #[arg(long, global = true, help = "Disable colour in terminal output")]
     pub no_colour: bool,

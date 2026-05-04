@@ -10,6 +10,7 @@ fn top_level_help_lists_command_groups() {
         .stdout(predicate::str::contains("subscribers"))
         .stdout(predicate::str::contains("newsletters"))
         .stdout(predicate::str::contains("automatic-newsletters"))
+        .stdout(predicate::str::contains("--compact-json"))
         .stdout(predicate::str::contains("--no-colour"))
         .stdout(predicate::str::contains("config"));
 }

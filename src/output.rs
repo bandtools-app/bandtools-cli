@@ -13,14 +13,19 @@ use tui::{
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum OutputFormat {
-    Json,
+    Json { pretty: bool },
     Tui { colour: bool },
 }
 
 impl OutputFormat {
     pub fn render(self, value: &Value) -> Result<String> {
         match self {
-            OutputFormat::Json => serde_json::to_string(value).context("failed to render JSON"),
+            OutputFormat::Json { pretty: false } => {
+                serde_json::to_string(value).context("failed to render JSON")
+            }
+            OutputFormat::Json { pretty: true } => {
+                serde_json::to_string_pretty(value).context("failed to render JSON")
+            }
             OutputFormat::Tui { colour } => {
                 render_tui(value, terminal_width(), colour && stdout_supports_colour())
             }
@@ -696,11 +701,21 @@ mod tests {
     }
 
     #[test]
-    fn json_output_stays_machine_readable() {
+    fn json_output_pretty_prints_by_default() {
         let value = json!({"data": {"ok": true}});
 
         assert_eq!(
-            OutputFormat::Json.render(&value).unwrap(),
+            OutputFormat::Json { pretty: true }.render(&value).unwrap(),
+            "{\n  \"data\": {\n    \"ok\": true\n  }\n}"
+        );
+    }
+
+    #[test]
+    fn compact_json_output_stays_machine_readable() {
+        let value = json!({"data": {"ok": true}});
+
+        assert_eq!(
+            OutputFormat::Json { pretty: false }.render(&value).unwrap(),
             r#"{"data":{"ok":true}}"#
         );
     }

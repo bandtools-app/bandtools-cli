@@ -12,8 +12,10 @@ use crate::{
 };
 
 pub fn run(cli: Cli) -> Result<()> {
-    let format = if cli.json {
-        OutputFormat::Json
+    let format = if cli.compact_json {
+        OutputFormat::Json { pretty: false }
+    } else if cli.json {
+        OutputFormat::Json { pretty: true }
     } else {
         OutputFormat::Tui {
             colour: !cli.no_colour,
