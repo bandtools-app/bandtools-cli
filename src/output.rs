@@ -265,13 +265,18 @@ impl ResponseModel {
                     )
                 }))
                 .bottom_margin(1);
+                let column_widths = array_column_widths(columns, rows, area.width);
                 let rows = rows.iter().map(|row| {
-                    Row::new(row.iter().map(|value| {
-                        Cell::from(truncate(value, 36))
+                    Row::new(row.iter().zip(column_widths.iter()).map(|(value, width)| {
+                        Cell::from(truncate(value, *width as usize))
                             .style(Style::default().fg(Color::LightGreen))
                     }))
                 });
-                let widths = array_table_widths(columns, area.width);
+                let widths = column_widths
+                    .iter()
+                    .copied()
+                    .map(Constraint::Length)
+                    .collect::<Vec<_>>();
                 let table = Table::new(rows)
                     .header(header)
                     .block(
@@ -466,34 +471,77 @@ fn stdout_supports_colour() -> bool {
     std::io::stdout().is_terminal() && std::env::var_os("NO_COLOR").is_none()
 }
 
-fn array_table_widths(columns: &[String], area_width: u16) -> Vec<Constraint> {
+fn array_column_widths(columns: &[String], rows: &[Vec<String>], area_width: u16) -> Vec<u16> {
     let count = columns.len();
     if count == 0 {
-        return vec![Constraint::Percentage(100)];
+        return vec![area_width.saturating_sub(2)];
     }
 
     let usable = area_width
         .saturating_sub(2)
         .saturating_sub((count.saturating_sub(1) * 2) as u16);
-    let equal_width = (usable / count as u16).max(6);
-
-    columns
+    let mut widths = columns
         .iter()
-        .map(|column| {
-            let desired = column_width_hint(column).min(equal_width.max(12));
-            Constraint::Length(desired)
-        })
-        .collect()
+        .enumerate()
+        .map(|(index, column)| desired_column_width(column, rows, index))
+        .collect::<Vec<_>>();
+
+    while widths.iter().sum::<u16>() > usable {
+        let shrinkable = widths
+            .iter()
+            .enumerate()
+            .filter(|(index, width)| **width > column_min_width(&columns[*index]))
+            .max_by_key(|(_, width)| **width)
+            .or_else(|| {
+                widths
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, width)| **width > 1)
+                    .max_by_key(|(_, width)| **width)
+            });
+
+        let Some((index, _)) = shrinkable else { break };
+
+        widths[index] = widths[index].saturating_sub(1);
+    }
+
+    widths
 }
 
-fn column_width_hint(column: &str) -> u16 {
+fn desired_column_width(column: &str, rows: &[Vec<String>], index: usize) -> u16 {
+    let content_width = rows
+        .iter()
+        .filter_map(|row| row.get(index))
+        .map(|value| value.chars().count() as u16)
+        .max()
+        .unwrap_or(0);
+    let observed_width = (column.chars().count() as u16).max(content_width);
+
+    observed_width.clamp(column_min_width(column), column_width_cap(column))
+}
+
+fn column_width_cap(column: &str) -> u16 {
     match column {
-        "id" | "status" | "source" => 14,
+        "id" => 24,
+        "status" | "source" => 14,
         "email_address" => 28,
-        "subject" | "name" => 24,
+        "subject" => 34,
+        "name" => 24,
         "confirmed" => 10,
         "created_at" | "updated_at" => 20,
         _ => 16,
+    }
+}
+
+fn column_min_width(column: &str) -> u16 {
+    match column {
+        "id" => 16,
+        "subject" => 22,
+        "email_address" | "name" => 18,
+        "created_at" | "updated_at" => 14,
+        "status" | "source" | "lock_version" => 8,
+        "confirmed" => 6,
+        _ => 8,
     }
 }
 
@@ -656,6 +704,62 @@ mod tests {
     }
 
     #[test]
+    fn array_widths_prioritise_newsletter_id_and_subject() {
+        let columns = vec![
+            "id".to_string(),
+            "subject".to_string(),
+            "status".to_string(),
+            "created_at".to_string(),
+            "updated_at".to_string(),
+            "lock_version".to_string(),
+        ];
+        let rows = vec![vec![
+            "returning-to-mountain-biking".to_string(),
+            "Returning To Mountain Biking After A Long Break".to_string(),
+            "draft".to_string(),
+            "2026-04-21T06:02:18Z".to_string(),
+            "2026-04-21T06:33:52Z".to_string(),
+            "0".to_string(),
+        ]];
+
+        let widths = array_column_widths(&columns, &rows, 100);
+
+        assert!(widths[0] > widths[2]);
+        assert!(widths[1] > widths[0]);
+        assert!(widths[1] > widths[2]);
+        assert!(widths[2] <= 8);
+    }
+
+    #[test]
+    fn array_widths_fit_narrow_tables() {
+        let columns = vec![
+            "id".to_string(),
+            "subject".to_string(),
+            "status".to_string(),
+            "created_at".to_string(),
+            "updated_at".to_string(),
+            "lock_version".to_string(),
+        ];
+        let rows = vec![vec![
+            "returning-to-mountain-biking".to_string(),
+            "Returning To Mountain Biking After A Long Break".to_string(),
+            "draft".to_string(),
+            "2026-04-21T06:02:18Z".to_string(),
+            "2026-04-21T06:33:52Z".to_string(),
+            "0".to_string(),
+        ]];
+        let area_width = 60_u16;
+        let spacing = (columns.len().saturating_sub(1) * 2) as u16;
+        let usable = area_width.saturating_sub(2).saturating_sub(spacing);
+
+        let width_sum = array_column_widths(&columns, &rows, area_width)
+            .into_iter()
+            .sum::<u16>();
+
+        assert!(width_sum <= usable);
+    }
+
+    #[test]
     fn tui_output_can_include_terminal_colour() {
         let value = json!({
             "data": {
@@ -669,7 +773,7 @@ mod tests {
 
         let rendered = render_tui(&value, 100, true).unwrap();
 
-        assert!(rendered.contains(r"____                  _ _____"));
+        assert!(rendered.contains(r" ____                  _ _____           _     "));
         assert!(rendered.contains("\x1b[36m"));
         assert!(rendered.contains("\x1b[92m"));
         assert!(rendered.contains("\x1b[1;33m"));
