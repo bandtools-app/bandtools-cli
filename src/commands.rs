@@ -8,19 +8,20 @@ use crate::{
     api::{ApiClient, Body, QueryParams, ensure_no_body, json_from_data, response_json},
     cli::*,
     config::{self, ConfigOverrides, FileConfig},
-    output::{OutputFormat, print_json},
+    output::{OutputFormat, print_value},
 };
 
 pub fn run(cli: Cli) -> Result<()> {
-    if let Command::Config(command) = cli.command {
-        return run_config(command, cli.config);
-    }
-
     let format = if cli.json {
         OutputFormat::Json
     } else {
-        OutputFormat::PrettyJson
+        OutputFormat::Tui
     };
+
+    if let Command::Config(command) = cli.command {
+        return run_config(command, cli.config, format);
+    }
+
     let config = config::resolve(ConfigOverrides {
         api_token: cli.api_token,
         api_url: cli.api_url,
@@ -38,7 +39,11 @@ pub fn run(cli: Cli) -> Result<()> {
     }
 }
 
-fn run_config(command: ConfigCommand, cli_path: Option<PathBuf>) -> Result<()> {
+fn run_config(
+    command: ConfigCommand,
+    cli_path: Option<PathBuf>,
+    format: OutputFormat,
+) -> Result<()> {
     let path = config::config_path(cli_path)?;
     let mut file = config::load(&path)?;
 
@@ -52,7 +57,7 @@ fn run_config(command: ConfigCommand, cli_path: Option<PathBuf>) -> Result<()> {
                 "api_token": file.api_token.as_ref().map(|_| "<configured>"),
                 "api_url": file.api_url,
             });
-            print_json(OutputFormat::PrettyJson, &value)?;
+            print_value(format, &value)?;
         }
         ConfigSubcommand::SetToken { api_token } => {
             file.api_token = Some(api_token);
@@ -142,7 +147,7 @@ fn subscribers(
                 if let Some(file) = args.file {
                     let response =
                         client.multipart_post_file("/subscribers/imports", "file", file)?;
-                    print_json(format, &response_json(response))
+                    print_value(format, &response_json(response))
                 } else if !args.email_address.is_empty() {
                     let body = json!({ "email_addresses": args.email_address });
                     print_response(
@@ -192,7 +197,7 @@ fn account(client: &ApiClient, format: OutputFormat, command: AccountCommand) ->
             PictureSubcommand::Upload(args) => {
                 let response =
                     client.multipart_file("/account/picture", "picture", args.picture)?;
-                print_json(format, &response_json(response))
+                print_value(format, &response_json(response))
             }
             PictureSubcommand::Delete => print_response_empty_ok(
                 client,
@@ -298,7 +303,7 @@ fn pages(client: &ApiClient, format: OutputFormat, command: PagesCommand) -> Res
                 "background_image",
                 args.background_image,
             )?;
-            print_json(format, &response_json(response))
+            print_value(format, &response_json(response))
         }
         PageSubcommand::DeleteBackground => print_response_empty_ok(
             client,
@@ -386,7 +391,7 @@ fn newsletters(
             AttachmentsSubcommand::Upload(args) => {
                 let response =
                     client.multipart_post_file("/newsletters/attachments", "file", args.file)?;
-                print_json(format, &response_json(response))
+                print_value(format, &response_json(response))
             }
         },
     }
@@ -666,7 +671,7 @@ fn print_response(
     body: Body<'_>,
 ) -> Result<()> {
     let response = client.request(method, path, &query, body)?;
-    print_json(format, &response_json(response))
+    print_value(format, &response_json(response))
 }
 
 fn print_response_empty_ok(
@@ -677,7 +682,7 @@ fn print_response_empty_ok(
     query: QueryParams,
 ) -> Result<()> {
     let response = client.request(method, path, &query, Body::Empty)?;
-    print_json(format, &ensure_no_body(response))
+    print_value(format, &ensure_no_body(response))
 }
 
 fn page_query(args: PageArgs) -> QueryParams {

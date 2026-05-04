@@ -46,6 +46,8 @@ async fn subscribers_list_sends_auth_and_query_params() {
     ])
     .assert()
     .success()
+    .stdout(predicate::str::contains("BandTools"))
+    .stdout(predicate::str::contains("fan@example.com").not())
     .stdout(predicate::str::contains("req_test"));
 }
 
@@ -76,6 +78,35 @@ async fn account_update_wraps_unwrapped_body() {
         .assert()
         .success()
         .stdout(predicate::str::contains("req_update"));
+}
+
+#[tokio::test]
+async fn json_flag_returns_raw_compact_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/account"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "data": { "id": "test" },
+            "meta": { "request_id": "req_json" }
+        })))
+        .mount(&server)
+        .await;
+
+    let mut cmd = Command::cargo_bin("bt").unwrap();
+    cmd.args([
+        "--api-url",
+        &server.uri(),
+        "--api-token",
+        "token",
+        "--json",
+        "account",
+        "get",
+    ])
+    .assert()
+    .success()
+    .stdout(predicate::eq(
+        r#"{"data":{"id":"test"},"meta":{"request_id":"req_json"}}"#.to_string() + "\n",
+    ));
 }
 
 #[tokio::test]

@@ -66,6 +66,16 @@ For resource-specific wrappers such as `account`, `settings`, `theme`, and
 `automatic_newsletter`, `bt` accepts either the wrapped API shape or the
 unwrapped object and wraps it automatically.
 
+## Output
+
+By default, `bt` renders API responses as terminal-friendly tables and panels.
+Use `--json` when you need raw compact JSON for scripts or piping:
+
+```sh
+bt subscribers list
+bt --json subscribers list
+```
+
 ## Command Help
 
 Every command group and command supports built-in help:

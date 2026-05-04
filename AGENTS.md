@@ -30,7 +30,7 @@ Prefer extending these existing modules over adding new abstractions.
 
 - Preserve token precedence: command-line option, environment variable, then config file.
 - Preserve support for overriding the API base URL without documenting real private URLs.
-- Keep API responses as JSON output unless a command already has a different established shape.
+- Keep `tui`-rendered responses as the default presentation, with `--json` preserving raw compact JSON for scripts.
 - For JSON request bodies, continue supporting `--data` and `--data-file`.
 - For wrapped API resources, continue accepting unwrapped input where existing commands already do so.
 - Use `anyhow` for application-level errors unless a more specific local error type already exists.
