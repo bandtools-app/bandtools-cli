@@ -21,7 +21,7 @@ impl OutputFormat {
     pub fn render(self, value: &Value) -> Result<String> {
         match self {
             OutputFormat::Json => serde_json::to_string(value).context("failed to render JSON"),
-            OutputFormat::Tui => render_tui(value, terminal_width()),
+            OutputFormat::Tui => render_tui(value, terminal_width(), stdout_supports_colour()),
         }
     }
 }
@@ -31,7 +31,7 @@ pub fn print_value(format: OutputFormat, value: &Value) -> Result<()> {
     Ok(())
 }
 
-fn render_tui(value: &Value, width: u16) -> Result<String> {
+fn render_tui(value: &Value, width: u16, colour: bool) -> Result<String> {
     let model = ResponseModel::from_value(value)?;
     let content_lines = model.content_line_count();
     let footer_height = model.footer_line_count().saturating_add(2).clamp(3, 8) as u16;
@@ -68,18 +68,27 @@ fn render_tui(value: &Value, width: u16) -> Result<String> {
                 ),
                 Span::raw(" response"),
             ]))
-            .block(Block::default().borders(Borders::ALL).title("bt"));
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(Color::Cyan))
+                    .title(Span::styled("bt", Style::default().fg(Color::Yellow))),
+            );
             frame.render_widget(title, chunks[0]);
 
             model.render(frame, chunks[1]);
 
-            let footer = Paragraph::new(model.footer())
-                .block(Block::default().borders(Borders::ALL).title("Meta"));
+            let footer = Paragraph::new(model.footer()).block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(Color::Cyan))
+                    .title(Span::styled("Meta", Style::default().fg(Color::Yellow))),
+            );
             frame.render_widget(footer, chunks[2]);
         })
         .context("failed to render terminal response")?;
 
-    Ok(buffer_to_string(terminal.backend().buffer()))
+    Ok(buffer_to_string(terminal.backend().buffer(), colour))
 }
 
 #[derive(Debug)]
@@ -198,13 +207,24 @@ impl ResponseModel {
                     )
                 }))
                 .bottom_margin(1);
-                let rows = rows
-                    .iter()
-                    .map(|row| Row::new(row.iter().map(|value| Cell::from(truncate(value, 36)))));
+                let rows = rows.iter().map(|row| {
+                    Row::new(row.iter().map(|value| {
+                        Cell::from(truncate(value, 36))
+                            .style(Style::default().fg(Color::LightGreen))
+                    }))
+                });
                 let widths = array_table_widths(columns, area.width);
                 let table = Table::new(rows)
                     .header(header)
-                    .block(Block::default().borders(Borders::ALL).title(title.as_str()))
+                    .block(
+                        Block::default()
+                            .borders(Borders::ALL)
+                            .border_style(Style::default().fg(Color::Cyan))
+                            .title(Span::styled(
+                                title.as_str(),
+                                Style::default().fg(Color::Yellow),
+                            )),
+                    )
                     .widths(&widths)
                     .column_spacing(2);
                 frame.render_widget(table, area);
@@ -217,19 +237,36 @@ impl ResponseModel {
                                 .fg(Color::Yellow)
                                 .add_modifier(Modifier::BOLD),
                         ),
-                        Cell::from(value.clone()),
+                        Cell::from(value.clone()).style(Style::default().fg(Color::LightGreen)),
                     ])
                 });
                 let widths = object_table_widths(area.width);
                 let table = Table::new(rows)
-                    .block(Block::default().borders(Borders::ALL).title(title.as_str()))
+                    .block(
+                        Block::default()
+                            .borders(Borders::ALL)
+                            .border_style(Style::default().fg(Color::Cyan))
+                            .title(Span::styled(
+                                title.as_str(),
+                                Style::default().fg(Color::Yellow),
+                            )),
+                    )
                     .widths(&widths)
                     .column_spacing(2);
                 frame.render_widget(table, area);
             }
             Self::Text { title, lines, .. } => {
                 let paragraph = Paragraph::new(lines.clone())
-                    .block(Block::default().borders(Borders::ALL).title(title.as_str()))
+                    .style(Style::default().fg(Color::LightGreen))
+                    .block(
+                        Block::default()
+                            .borders(Borders::ALL)
+                            .border_style(Style::default().fg(Color::Cyan))
+                            .title(Span::styled(
+                                title.as_str(),
+                                Style::default().fg(Color::Yellow),
+                            )),
+                    )
                     .wrap(Wrap { trim: false });
                 frame.render_widget(paragraph, area);
             }
@@ -282,9 +319,14 @@ fn footer_lines(value: &Value) -> Vec<Spans<'static>> {
         lines.push(Spans::from(vec![
             Span::styled(
                 "request_id: ",
-                Style::default().add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
             ),
-            Span::raw(request_id.to_string()),
+            Span::styled(
+                request_id.to_string(),
+                Style::default().fg(Color::LightGreen),
+            ),
         ]));
     }
 
@@ -301,17 +343,34 @@ fn footer_lines(value: &Value) -> Vec<Spans<'static>> {
             .get("total_pages")
             .map(format_value)
             .unwrap_or_else(|| "-".to_string());
-        lines.push(Spans::from(format!(
-            "page {page} of {total_pages}, {total} total"
-        )));
+        lines.push(Spans::from(vec![
+            Span::styled("page ", Style::default().fg(Color::Yellow)),
+            Span::styled(page, Style::default().fg(Color::LightGreen)),
+            Span::raw(" of "),
+            Span::styled(total_pages, Style::default().fg(Color::LightGreen)),
+            Span::raw(", "),
+            Span::styled(total, Style::default().fg(Color::LightGreen)),
+            Span::raw(" total"),
+        ]));
     }
 
     if let Some(location) = value.get("location").and_then(Value::as_str) {
-        lines.push(Spans::from(format!("location: {location}")));
+        lines.push(Spans::from(vec![
+            Span::styled(
+                "location: ",
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(location.to_string(), Style::default().fg(Color::LightGreen)),
+        ]));
     }
 
     if lines.is_empty() {
-        lines.push(Spans::from("No metadata returned"));
+        lines.push(Spans::from(Span::styled(
+            "No metadata returned",
+            Style::default().fg(Color::LightGreen),
+        )));
     }
 
     lines
@@ -343,6 +402,10 @@ fn terminal_width() -> u16 {
     terminal_size::terminal_size()
         .map(|(width, _)| width.0)
         .unwrap_or(100)
+}
+
+fn stdout_supports_colour() -> bool {
+    std::io::stdout().is_terminal() && std::env::var_os("NO_COLOR").is_none()
 }
 
 fn array_table_widths(columns: &[String], area_width: u16) -> Vec<Constraint> {
@@ -400,16 +463,35 @@ fn truncate(value: &str, max_chars: usize) -> String {
     truncated
 }
 
-fn buffer_to_string(buffer: &tui::buffer::Buffer) -> String {
+fn buffer_to_string(buffer: &tui::buffer::Buffer, colour: bool) -> String {
     let area = buffer.area;
     let mut lines = Vec::new();
 
     for y in area.y..area.y + area.height {
         let mut line = String::new();
-        for x in area.x..area.x + area.width {
-            line.push_str(buffer.get(x, y).symbol.as_str());
+        let last_content_x = (area.x..area.x + area.width)
+            .rev()
+            .find(|x| !buffer.get(*x, y).symbol.trim().is_empty());
+
+        if let Some(last_content_x) = last_content_x {
+            let mut current_style = CellStyle::default();
+            for x in area.x..=last_content_x {
+                let cell = buffer.get(x, y);
+                if colour {
+                    let style = CellStyle::from_cell(cell);
+                    if style != current_style {
+                        line.push_str(style.ansi_transition());
+                        current_style = style;
+                    }
+                }
+                line.push_str(cell.symbol.as_str());
+            }
+
+            if colour && current_style.is_styled() {
+                line.push_str("\x1b[0m");
+            }
         }
-        lines.push(line.trim_end().to_string());
+        lines.push(line);
     }
 
     while lines.last().is_some_and(|line| line.is_empty()) {
@@ -417,6 +499,42 @@ fn buffer_to_string(buffer: &tui::buffer::Buffer) -> String {
     }
 
     lines.join("\n")
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+struct CellStyle {
+    fg: Option<Color>,
+    bold: bool,
+}
+
+impl CellStyle {
+    fn from_cell(cell: &tui::buffer::Cell) -> Self {
+        Self {
+            fg: match cell.fg {
+                Color::Reset => None,
+                colour => Some(colour),
+            },
+            bold: cell.modifier.contains(Modifier::BOLD),
+        }
+    }
+
+    fn is_styled(self) -> bool {
+        self.fg.is_some() || self.bold
+    }
+
+    fn ansi_transition(self) -> &'static str {
+        match (self.fg, self.bold) {
+            (None, false) => "\x1b[0m",
+            (Some(Color::Cyan), false) => "\x1b[36m",
+            (Some(Color::Cyan), true) => "\x1b[1;36m",
+            (Some(Color::LightGreen), false) => "\x1b[92m",
+            (Some(Color::LightGreen), true) => "\x1b[1;92m",
+            (Some(Color::Yellow), false) => "\x1b[33m",
+            (Some(Color::Yellow), true) => "\x1b[1;33m",
+            (_, false) => "\x1b[0m",
+            (_, true) => "\x1b[1m",
+        }
+    }
 }
 
 #[cfg(test)]
@@ -447,7 +565,7 @@ mod tests {
             }
         });
 
-        let rendered = render_tui(&value, 100).unwrap();
+        let rendered = render_tui(&value, 100, false).unwrap();
 
         assert!(rendered.contains("BandTools"));
         assert!(rendered.contains("fan@example.com"));
@@ -464,7 +582,7 @@ mod tests {
             }
         });
 
-        let rendered = render_tui(&value, 60).unwrap();
+        let rendered = render_tui(&value, 60, false).unwrap();
 
         assert!(rendered.lines().all(|line| line.chars().count() <= 60));
     }
@@ -477,5 +595,24 @@ mod tests {
             OutputFormat::Json.render(&value).unwrap(),
             r#"{"data":{"ok":true}}"#
         );
+    }
+
+    #[test]
+    fn tui_output_can_include_terminal_colour() {
+        let value = json!({
+            "data": {
+                "name": "Release party",
+                "status": "confirmed"
+            },
+            "meta": {
+                "request_id": "req_test"
+            }
+        });
+
+        let rendered = render_tui(&value, 100, true).unwrap();
+
+        assert!(rendered.contains("\x1b[36m"));
+        assert!(rendered.contains("\x1b[92m"));
+        assert!(rendered.contains("\x1b[1;33m"));
     }
 }
