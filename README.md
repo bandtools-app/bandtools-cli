@@ -154,3 +154,9 @@ cargo test
 
 The tests include parser/help coverage, config behaviour, request construction,
 authorisation header precedence, and mock HTTP API calls.
+
+## Copyright
+
+Copyright (c) 2026 BandTools Ltd.
+
+This project is licensed under the MIT licence. See [LICENSE](LICENSE).
