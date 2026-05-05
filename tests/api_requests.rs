@@ -1,6 +1,7 @@
 use assert_cmd::Command;
 use predicates::prelude::*;
 use serde_json::json;
+use std::fs;
 use wiremock::{
     Mock, MockServer, ResponseTemplate,
     matchers::{body_json, header, method, path, query_param},
@@ -172,6 +173,81 @@ async fn plain_flag_returns_unornamented_text() {
     .stdout(predicate::str::contains("request_id: req_plain"))
     .stdout(predicate::str::contains("┌").not())
     .stdout(predicate::str::contains("\x1b[").not());
+}
+
+#[tokio::test]
+async fn configured_plain_output_is_used_without_an_output_flag() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/account"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "data": {
+                "id": "test",
+                "name": "Ava Band"
+            },
+            "meta": { "request_id": "req_config_plain" }
+        })))
+        .mount(&server)
+        .await;
+
+    let dir = tempfile::tempdir().unwrap();
+    let config = dir.path().join("config.toml");
+    fs::write(
+        &config,
+        format!(
+            "api_token = \"token\"\napi_url = \"{}\"\noutput = \"plain\"\n",
+            server.uri()
+        ),
+    )
+    .unwrap();
+
+    let mut cmd = Command::cargo_bin("bt").unwrap();
+    cmd.args(["--config", config.to_str().unwrap(), "account", "get"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("name: Ava Band"))
+        .stdout(predicate::str::contains("req_config_plain"))
+        .stdout(predicate::str::contains("┌").not())
+        .stdout(predicate::str::contains("\x1b[").not());
+}
+
+#[tokio::test]
+async fn output_flag_takes_precedence_over_configured_output() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/account"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "data": { "id": "test" },
+            "meta": { "request_id": "req_output_precedence" }
+        })))
+        .mount(&server)
+        .await;
+
+    let dir = tempfile::tempdir().unwrap();
+    let config = dir.path().join("config.toml");
+    fs::write(
+        &config,
+        format!(
+            "api_token = \"token\"\napi_url = \"{}\"\noutput = \"plain\"\n",
+            server.uri()
+        ),
+    )
+    .unwrap();
+
+    let mut cmd = Command::cargo_bin("bt").unwrap();
+    cmd.args([
+        "--config",
+        config.to_str().unwrap(),
+        "--compact-json",
+        "account",
+        "get",
+    ])
+    .assert()
+    .success()
+    .stdout(predicate::eq(
+        r#"{"data":{"id":"test"},"meta":{"request_id":"req_output_precedence"}}"#.to_string()
+            + "\n",
+    ));
 }
 
 #[tokio::test]

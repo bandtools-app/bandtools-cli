@@ -9,7 +9,7 @@ use serde_json::{Value, json};
 use crate::{
     api::{ApiClient, Body, QueryParams, ensure_no_body, json_from_data, response_json},
     cli::*,
-    config::{self, ConfigOverrides, FileConfig},
+    config::{self, ConfigOverrides, FileConfig, OutputPreference},
     output::{OutputFormat, print_value},
 };
 
@@ -25,18 +25,10 @@ pub fn run(cli: Cli) -> Result<()> {
         command,
     } = cli;
 
-    let format = if compact_json {
-        OutputFormat::Json { pretty: false }
-    } else if json {
-        OutputFormat::Json { pretty: true }
-    } else if plain {
-        OutputFormat::Plain
-    } else {
-        OutputFormat::Tui { colour: !no_colour }
-    };
+    let cli_format = cli_output_format(json, compact_json, plain);
 
     match command {
-        Command::Config(command) => run_config(command, config_path, format),
+        Command::Config(command) => run_config(command, config_path, cli_format, no_colour),
         Command::Completions(command) => {
             let mut clap_command = Cli::command();
             generate(
@@ -53,6 +45,8 @@ pub fn run(cli: Cli) -> Result<()> {
                 api_url,
                 config_path,
             })?;
+            let format =
+                cli_format.unwrap_or_else(|| preferred_output_format(config.output, no_colour));
             let client = ApiClient::new(&config)?;
 
             match command {
@@ -72,10 +66,12 @@ pub fn run(cli: Cli) -> Result<()> {
 fn run_config(
     command: ConfigCommand,
     cli_path: Option<PathBuf>,
-    format: OutputFormat,
+    cli_format: Option<OutputFormat>,
+    no_colour: bool,
 ) -> Result<()> {
     let path = config::config_path(cli_path)?;
     let mut file = config::load(&path)?;
+    let format = cli_format.unwrap_or_else(|| preferred_output_format(file.output, no_colour));
 
     match command.command {
         ConfigSubcommand::Path => {
@@ -86,6 +82,7 @@ fn run_config(
                 "config_path": path,
                 "api_token": file.api_token.as_ref().map(|_| "<configured>"),
                 "api_url": file.api_url,
+                "output": file.output.map(OutputPreference::as_config_value),
             });
             print_value(format, &value)?;
         }
@@ -99,10 +96,16 @@ fn run_config(
             config::save(&path, &file)?;
             println!("Updated {}", path.display());
         }
+        ConfigSubcommand::SetOutput { output } => {
+            file.output = Some(output.into());
+            config::save(&path, &file)?;
+            println!("Updated {}", path.display());
+        }
         ConfigSubcommand::Unset { key } => {
             match key {
                 ConfigKey::ApiToken => file.api_token = None,
                 ConfigKey::ApiUrl => file.api_url = None,
+                ConfigKey::Output => file.output = None,
             }
             config::save(&path, &file)?;
             println!("Updated {}", path.display());
@@ -110,6 +113,27 @@ fn run_config(
     }
 
     Ok(())
+}
+
+fn cli_output_format(json: bool, compact_json: bool, plain: bool) -> Option<OutputFormat> {
+    if compact_json {
+        Some(OutputFormat::Json { pretty: false })
+    } else if json {
+        Some(OutputFormat::Json { pretty: true })
+    } else if plain {
+        Some(OutputFormat::Plain)
+    } else {
+        None
+    }
+}
+
+fn preferred_output_format(output: Option<OutputPreference>, no_colour: bool) -> OutputFormat {
+    match output {
+        Some(OutputPreference::Plain) => OutputFormat::Plain,
+        Some(OutputPreference::Json) => OutputFormat::Json { pretty: true },
+        Some(OutputPreference::CompactJson) => OutputFormat::Json { pretty: false },
+        Some(OutputPreference::Tui) | None => OutputFormat::Tui { colour: !no_colour },
+    }
 }
 
 fn subscribers(
@@ -760,5 +784,17 @@ mod tests {
     #[test]
     fn encodes_path_segments() {
         assert_eq!(segment("tour announcement"), "tour%20announcement");
+    }
+
+    #[test]
+    fn cli_output_flags_override_configured_output() {
+        assert_eq!(
+            cli_output_format(false, true, false),
+            Some(OutputFormat::Json { pretty: false })
+        );
+        assert_eq!(
+            preferred_output_format(Some(OutputPreference::Plain), false),
+            OutputFormat::Plain
+        );
     }
 }

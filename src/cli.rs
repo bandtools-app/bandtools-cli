@@ -3,6 +3,8 @@ use std::path::PathBuf;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
 
+use crate::config::OutputPreference;
+
 #[derive(Debug, Parser)]
 #[command(name = "bt", version, about = "BandTools command line interface")]
 #[command(
@@ -502,7 +504,9 @@ pub enum ConfigSubcommand {
     SetToken { api_token: String },
     #[command(about = "Set api_url in the local config file")]
     SetApiUrl { api_url: String },
-    #[command(about = "Clear api_token or api_url from the local config file")]
+    #[command(about = "Set preferred response output in the local config file")]
+    SetOutput { output: ConfigOutput },
+    #[command(about = "Clear api_token, api_url, or output from the local config file")]
     Unset { key: ConfigKey },
 }
 
@@ -510,6 +514,26 @@ pub enum ConfigSubcommand {
 pub enum ConfigKey {
     ApiToken,
     ApiUrl,
+    Output,
+}
+
+#[derive(Debug, ValueEnum, Clone, Copy)]
+pub enum ConfigOutput {
+    Tui,
+    Plain,
+    Json,
+    CompactJson,
+}
+
+impl From<ConfigOutput> for OutputPreference {
+    fn from(output: ConfigOutput) -> Self {
+        match output {
+            ConfigOutput::Tui => Self::Tui,
+            ConfigOutput::Plain => Self::Plain,
+            ConfigOutput::Json => Self::Json,
+            ConfigOutput::CompactJson => Self::CompactJson,
+        }
+    }
 }
 
 pub fn value_enum_string<T: ValueEnum + Clone>(value: &T) -> String {

@@ -44,6 +44,7 @@ Config helpers:
 bt config path
 bt config set-token TOKEN
 bt config set-api-url http://localhost:3000/api/v1
+bt config set-output plain
 bt config show
 bt config unset api-token
 ```
@@ -87,6 +88,19 @@ Use `--plain` when you want text output without TUI borders, logo, or colour:
 ```sh
 bt --plain subscribers list
 ```
+
+To make an output mode persist across requests and sessions, store it in the
+config file:
+
+```sh
+bt config set-output plain
+bt config set-output json
+bt config set-output compact-json
+bt config set-output tui
+```
+
+Per-command output flags such as `--plain`, `--json`, and `--compact-json`
+override the configured preference for that invocation.
 
 Terminal output uses colour when stdout is an interactive terminal. Use
 `--no-colour` to keep the table layout but suppress ANSI colour:

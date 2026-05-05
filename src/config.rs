@@ -20,12 +20,14 @@ pub const HOME_ENV: &str = "HOME";
 pub struct FileConfig {
     pub api_token: Option<String>,
     pub api_url: Option<String>,
+    pub output: Option<OutputPreference>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ResolvedConfig {
     pub api_token: String,
     pub api_url: String,
+    pub output: Option<OutputPreference>,
     pub config_path: PathBuf,
 }
 
@@ -34,6 +36,26 @@ pub struct ConfigOverrides {
     pub api_token: Option<String>,
     pub api_url: Option<String>,
     pub config_path: Option<PathBuf>,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum OutputPreference {
+    Tui,
+    Plain,
+    Json,
+    CompactJson,
+}
+
+impl OutputPreference {
+    pub fn as_config_value(self) -> &'static str {
+        match self {
+            Self::Tui => "tui",
+            Self::Plain => "plain",
+            Self::Json => "json",
+            Self::CompactJson => "compact-json",
+        }
+    }
 }
 
 pub fn default_config_path() -> Result<PathBuf> {
@@ -104,6 +126,7 @@ pub fn resolve(overrides: ConfigOverrides) -> Result<ResolvedConfig> {
     Ok(ResolvedConfig {
         api_token,
         api_url: normalise_api_url(&api_url)?,
+        output: file.output,
         config_path: path,
     })
 }
@@ -175,6 +198,17 @@ mod tests {
     #[test]
     fn rejects_relative_api_url() {
         assert!(normalise_api_url("/api/v1").is_err());
+    }
+
+    #[test]
+    fn output_preference_uses_kebab_case_toml_values() {
+        let config: FileConfig = toml::from_str(r#"output = "compact-json""#).unwrap();
+        assert_eq!(config.output, Some(OutputPreference::CompactJson));
+
+        assert_eq!(
+            toml::to_string(&config).unwrap(),
+            "output = \"compact-json\"\n"
+        );
     }
 
     #[test]
