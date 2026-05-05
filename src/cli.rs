@@ -405,9 +405,25 @@ pub struct CollaboratorsCommand {
 
 #[derive(Debug, Subcommand)]
 pub enum CollaboratorsSubcommand {
-    List(NewsletterIdArg),
+    List(CollaboratorsListArgs),
     Invite(CollaboratorInviteArgs),
     Revoke(CollaboratorRevokeArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct CollaboratorsListArgs {
+    #[arg(value_name = "NEWSLETTER_ID")]
+    pub newsletter_id: String,
+    #[arg(long, value_enum, help = "Sort order")]
+    pub sort: Option<CollaboratorSort>,
+}
+
+#[derive(Debug, ValueEnum, Clone)]
+pub enum CollaboratorSort {
+    NameAsc,
+    NameDesc,
+    EmailAsc,
+    EmailDesc,
 }
 
 #[derive(Debug, Args)]
@@ -476,13 +492,21 @@ pub struct WebhooksCommand {
 
 #[derive(Debug, Subcommand)]
 pub enum WebhooksSubcommand {
-    List(PageArgs),
+    List(WebhooksListArgs),
     Create(JsonBodyArgs),
     Get(IdArg),
     Update(UpdateByIdArgs),
     Delete(IdArg),
     #[command(name = "rotate-signing-secret")]
     RotateSigningSecret(IdArg),
+}
+
+#[derive(Debug, Args)]
+pub struct WebhooksListArgs {
+    #[command(flatten)]
+    pub page: PageArgs,
+    #[arg(long, value_enum, help = "Sort order")]
+    pub sort: Option<NameCreatedSort>,
 }
 
 #[derive(Debug, Args)]
@@ -493,7 +517,7 @@ pub struct AutomaticNewslettersCommand {
 
 #[derive(Debug, Subcommand)]
 pub enum AutomaticNewslettersSubcommand {
-    List(PageArgs),
+    List(AutomaticNewslettersListArgs),
     Create(JsonBodyArgs),
     Get(IdArg),
     Update(UpdateByIdArgs),
@@ -501,6 +525,22 @@ pub enum AutomaticNewslettersSubcommand {
     Pause(IdArg),
     Resume(IdArg),
     Validate(FeedValidateArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct AutomaticNewslettersListArgs {
+    #[command(flatten)]
+    pub page: PageArgs,
+    #[arg(long, value_enum, help = "Sort order")]
+    pub sort: Option<NameCreatedSort>,
+}
+
+#[derive(Debug, ValueEnum, Clone)]
+pub enum NameCreatedSort {
+    NameAsc,
+    NameDesc,
+    CreatedAsc,
+    CreatedDesc,
 }
 
 #[derive(Debug, Args)]

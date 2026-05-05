@@ -325,6 +325,7 @@ async fn webhooks_list_sends_pagination_query_params() {
         .and(path("/webhooks"))
         .and(query_param("page", "2"))
         .and(query_param("per_page", "5"))
+        .and(query_param("sort", "name_asc"))
         .and(header("authorization", "Bearer token"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
             "data": [],
@@ -347,10 +348,81 @@ async fn webhooks_list_sends_pagination_query_params() {
         "2",
         "--per-page",
         "5",
+        "--sort",
+        "name-asc",
     ])
     .assert()
     .success()
     .stdout(predicate::str::contains("req_webhooks_list"));
+}
+
+#[tokio::test]
+async fn collaborators_list_sends_sort_query_param() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/newsletters/newsletter123/collaborators"))
+        .and(query_param("sort", "email_desc"))
+        .and(header("authorization", "Bearer token"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "data": [],
+            "meta": { "request_id": "req_collaborators_sort" }
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let mut cmd = Command::cargo_bin("bt").unwrap();
+    cmd.args([
+        "--api-url",
+        &server.uri(),
+        "--api-token",
+        "token",
+        "--plain",
+        "newsletters",
+        "collaborators",
+        "list",
+        "newsletter123",
+        "--sort",
+        "email-desc",
+    ])
+    .assert()
+    .success()
+    .stdout(predicate::str::contains("req_collaborators_sort"));
+}
+
+#[tokio::test]
+async fn automatic_newsletters_list_sends_sort_query_param() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/automatic-newsletters"))
+        .and(query_param("page", "3"))
+        .and(query_param("sort", "created_asc"))
+        .and(header("authorization", "Bearer token"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "data": [],
+            "meta": { "request_id": "req_automatic_sort" }
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let mut cmd = Command::cargo_bin("bt").unwrap();
+    cmd.args([
+        "--api-url",
+        &server.uri(),
+        "--api-token",
+        "token",
+        "--plain",
+        "automatic-newsletters",
+        "list",
+        "--page",
+        "3",
+        "--sort",
+        "created-asc",
+    ])
+    .assert()
+    .success()
+    .stdout(predicate::str::contains("req_automatic_sort"));
 }
 
 #[tokio::test]

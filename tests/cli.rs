@@ -52,6 +52,33 @@ fn webhooks_help_lists_webhook_commands() {
 }
 
 #[test]
+fn ordered_resource_help_lists_sort_options() {
+    let mut automatic = Command::cargo_bin("bt").unwrap();
+    automatic
+        .args(["automatic-newsletters", "list", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--sort"))
+        .stdout(predicate::str::contains("created-asc"));
+
+    let mut collaborators = Command::cargo_bin("bt").unwrap();
+    collaborators
+        .args(["newsletters", "collaborators", "list", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--sort"))
+        .stdout(predicate::str::contains("email-desc"));
+
+    let mut webhooks = Command::cargo_bin("bt").unwrap();
+    webhooks
+        .args(["webhooks", "list", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--sort"))
+        .stdout(predicate::str::contains("name-desc"));
+}
+
+#[test]
 fn config_commands_do_not_require_token() {
     let dir = tempfile::tempdir().unwrap();
     let config = dir.path().join("config.toml");

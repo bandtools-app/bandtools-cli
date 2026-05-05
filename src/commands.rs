@@ -469,17 +469,21 @@ fn collaborators(
     command: CollaboratorsCommand,
 ) -> Result<()> {
     match command.command {
-        CollaboratorsSubcommand::List(args) => print_response(
-            client,
-            format,
-            Method::GET,
-            &format!(
-                "/newsletters/{}/collaborators",
-                segment(&args.newsletter_id)
-            ),
-            QueryParams::default(),
-            Body::Empty,
-        ),
+        CollaboratorsSubcommand::List(args) => {
+            let mut query = QueryParams::default();
+            query.push_opt("sort", args.sort.as_ref().map(value_enum_string));
+            print_response(
+                client,
+                format,
+                Method::GET,
+                &format!(
+                    "/newsletters/{}/collaborators",
+                    segment(&args.newsletter_id)
+                ),
+                query,
+                Body::Empty,
+            )
+        }
         CollaboratorsSubcommand::Invite(args) => {
             let body = json!({ "email_address": args.email_address });
             print_response(
@@ -562,14 +566,11 @@ fn shared_newsletters(
 
 fn webhooks(client: &ApiClient, format: OutputFormat, command: WebhooksCommand) -> Result<()> {
     match command.command {
-        WebhooksSubcommand::List(args) => print_response(
-            client,
-            format,
-            Method::GET,
-            "/webhooks",
-            page_query(args),
-            Body::Empty,
-        ),
+        WebhooksSubcommand::List(args) => {
+            let mut query = page_query(args.page);
+            query.push_opt("sort", args.sort.as_ref().map(value_enum_string));
+            print_response(client, format, Method::GET, "/webhooks", query, Body::Empty)
+        }
         WebhooksSubcommand::Create(args) => post_json(client, format, "/webhooks", "webhook", args),
         WebhooksSubcommand::Get(args) => get_by_id(client, format, "/webhooks", &args.id),
         WebhooksSubcommand::Update(args) => {
@@ -592,14 +593,18 @@ fn automatic_newsletters(
     command: AutomaticNewslettersCommand,
 ) -> Result<()> {
     match command.command {
-        AutomaticNewslettersSubcommand::List(args) => print_response(
-            client,
-            format,
-            Method::GET,
-            "/automatic-newsletters",
-            page_query(args),
-            Body::Empty,
-        ),
+        AutomaticNewslettersSubcommand::List(args) => {
+            let mut query = page_query(args.page);
+            query.push_opt("sort", args.sort.as_ref().map(value_enum_string));
+            print_response(
+                client,
+                format,
+                Method::GET,
+                "/automatic-newsletters",
+                query,
+                Body::Empty,
+            )
+        }
         AutomaticNewslettersSubcommand::Create(args) => post_json(
             client,
             format,
