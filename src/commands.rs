@@ -57,6 +57,7 @@ pub fn run(cli: Cli) -> Result<()> {
                 Command::AutomaticNewsletters(command) => {
                     automatic_newsletters(&client, format, command)
                 }
+                Command::Webhooks(command) => webhooks(&client, format, command),
                 Command::Config(_) | Command::Completions(_) => unreachable!("handled above"),
             }
         }
@@ -556,6 +557,32 @@ fn shared_newsletters(
                 Body::Empty,
             )
         }
+    }
+}
+
+fn webhooks(client: &ApiClient, format: OutputFormat, command: WebhooksCommand) -> Result<()> {
+    match command.command {
+        WebhooksSubcommand::List(args) => print_response(
+            client,
+            format,
+            Method::GET,
+            "/webhooks",
+            page_query(args),
+            Body::Empty,
+        ),
+        WebhooksSubcommand::Create(args) => post_json(client, format, "/webhooks", "webhook", args),
+        WebhooksSubcommand::Get(args) => get_by_id(client, format, "/webhooks", &args.id),
+        WebhooksSubcommand::Update(args) => {
+            patch_json_by_id(client, format, "/webhooks", &args.id, "webhook", args.body)
+        }
+        WebhooksSubcommand::Delete(args) => delete_by_id(client, format, "/webhooks", &args.id),
+        WebhooksSubcommand::RotateSigningSecret(args) => action_by_id(
+            client,
+            format,
+            "/webhooks",
+            &args.id,
+            "rotate-signing-secret",
+        ),
     }
 }
 

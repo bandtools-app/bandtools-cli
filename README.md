@@ -10,6 +10,8 @@ bt subscribers add --email-address fan@example.com
 bt newsletters list --status draft
 bt newsletters pin newsletter123
 bt newsletters unpin newsletter123
+bt webhooks list
+bt webhooks create --data '{"name":"Production sync","url":"https://hooks.example.com/bandtools","event_types":["newsletter.sent"]}'
 bt account get
 ```
 

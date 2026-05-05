@@ -68,6 +68,8 @@ pub enum Command {
     SharedNewsletters(SharedNewslettersCommand),
     #[command(name = "automatic-newsletters", about = "Manage automatic newsletters")]
     AutomaticNewsletters(AutomaticNewslettersCommand),
+    #[command(about = "Manage webhooks")]
+    Webhooks(WebhooksCommand),
     #[command(about = "Manage local bt configuration")]
     Config(ConfigCommand),
     #[command(about = "Generate shell completion scripts")]
@@ -464,6 +466,23 @@ pub struct SharedNewslettersListArgs {
     pub page: PageArgs,
     #[arg(long)]
     pub sort: Option<String>,
+}
+
+#[derive(Debug, Args)]
+pub struct WebhooksCommand {
+    #[command(subcommand)]
+    pub command: WebhooksSubcommand,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum WebhooksSubcommand {
+    List(PageArgs),
+    Create(JsonBodyArgs),
+    Get(IdArg),
+    Update(UpdateByIdArgs),
+    Delete(IdArg),
+    #[command(name = "rotate-signing-secret")]
+    RotateSigningSecret(IdArg),
 }
 
 #[derive(Debug, Args)]

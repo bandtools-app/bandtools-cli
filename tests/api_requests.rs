@@ -319,6 +319,188 @@ async fn newsletters_unpin_deletes_pin_endpoint() {
 }
 
 #[tokio::test]
+async fn webhooks_list_sends_pagination_query_params() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/webhooks"))
+        .and(query_param("page", "2"))
+        .and(query_param("per_page", "5"))
+        .and(header("authorization", "Bearer token"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "data": [],
+            "meta": { "request_id": "req_webhooks_list" }
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let mut cmd = Command::cargo_bin("bt").unwrap();
+    cmd.args([
+        "--api-url",
+        &server.uri(),
+        "--api-token",
+        "token",
+        "--plain",
+        "webhooks",
+        "list",
+        "--page",
+        "2",
+        "--per-page",
+        "5",
+    ])
+    .assert()
+    .success()
+    .stdout(predicate::str::contains("req_webhooks_list"));
+}
+
+#[tokio::test]
+async fn webhooks_create_wraps_unwrapped_body() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/webhooks"))
+        .and(header("authorization", "Bearer token"))
+        .and(body_json(json!({
+            "webhook": {
+                "name": "Production sync",
+                "url": "https://hooks.example.com/bandtools",
+                "event_types": ["newsletter.sent"]
+            }
+        })))
+        .respond_with(ResponseTemplate::new(201).set_body_json(json!({
+            "data": {
+                "id": 42,
+                "name": "Production sync",
+                "signing_secret": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+            },
+            "meta": { "request_id": "req_webhook_create" }
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let mut cmd = Command::cargo_bin("bt").unwrap();
+    cmd.args([
+        "--api-url",
+        &server.uri(),
+        "--api-token",
+        "token",
+        "--plain",
+        "webhooks",
+        "create",
+        "--data",
+        r#"{"name":"Production sync","url":"https://hooks.example.com/bandtools","event_types":["newsletter.sent"]}"#,
+    ])
+    .assert()
+    .success()
+    .stdout(predicate::str::contains("signing_secret"))
+    .stdout(predicate::str::contains("req_webhook_create"));
+}
+
+#[tokio::test]
+async fn webhooks_update_patches_wrapped_body_by_id() {
+    let server = MockServer::start().await;
+    Mock::given(method("PATCH"))
+        .and(path("/webhooks/42"))
+        .and(header("authorization", "Bearer token"))
+        .and(body_json(json!({
+            "webhook": {
+                "enabled": false,
+                "event_types": ["subscriber.created"]
+            }
+        })))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "data": {
+                "id": 42,
+                "enabled": false,
+                "event_types": ["subscriber.created"]
+            },
+            "meta": { "request_id": "req_webhook_update" }
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let mut cmd = Command::cargo_bin("bt").unwrap();
+    cmd.args([
+        "--api-url",
+        &server.uri(),
+        "--api-token",
+        "token",
+        "--plain",
+        "webhooks",
+        "update",
+        "42",
+        "--data",
+        r#"{"webhook":{"enabled":false,"event_types":["subscriber.created"]}}"#,
+    ])
+    .assert()
+    .success()
+    .stdout(predicate::str::contains("enabled    : false"))
+    .stdout(predicate::str::contains("req_webhook_update"));
+}
+
+#[tokio::test]
+async fn webhooks_rotate_signing_secret_posts_to_action_endpoint() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/webhooks/42/rotate-signing-secret"))
+        .and(header("authorization", "Bearer token"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "data": {
+                "id": 42,
+                "signing_secret": "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
+            },
+            "meta": { "request_id": "req_webhook_rotate" }
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let mut cmd = Command::cargo_bin("bt").unwrap();
+    cmd.args([
+        "--api-url",
+        &server.uri(),
+        "--api-token",
+        "token",
+        "--plain",
+        "webhooks",
+        "rotate-signing-secret",
+        "42",
+    ])
+    .assert()
+    .success()
+    .stdout(predicate::str::contains("signing_secret"))
+    .stdout(predicate::str::contains("req_webhook_rotate"));
+}
+
+#[tokio::test]
+async fn webhooks_delete_deletes_by_id() {
+    let server = MockServer::start().await;
+    Mock::given(method("DELETE"))
+        .and(path("/webhooks/42"))
+        .and(header("authorization", "Bearer token"))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let mut cmd = Command::cargo_bin("bt").unwrap();
+    cmd.args([
+        "--api-url",
+        &server.uri(),
+        "--api-token",
+        "token",
+        "--plain",
+        "webhooks",
+        "delete",
+        "42",
+    ])
+    .assert()
+    .success()
+    .stdout(predicate::str::contains("status: 204"));
+}
+
+#[tokio::test]
 async fn api_token_cli_argument_takes_precedence_over_environment() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))

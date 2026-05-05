@@ -10,6 +10,7 @@ fn top_level_help_lists_command_groups() {
         .stdout(predicate::str::contains("subscribers"))
         .stdout(predicate::str::contains("newsletters"))
         .stdout(predicate::str::contains("automatic-newsletters"))
+        .stdout(predicate::str::contains("webhooks"))
         .stdout(predicate::str::contains("--compact-json"))
         .stdout(predicate::str::contains("--plain"))
         .stdout(predicate::str::contains("--no-colour"))
@@ -36,6 +37,18 @@ fn newsletters_help_lists_pin_commands() {
         .success()
         .stdout(predicate::str::contains("pin"))
         .stdout(predicate::str::contains("unpin"));
+}
+
+#[test]
+fn webhooks_help_lists_webhook_commands() {
+    let mut cmd = Command::cargo_bin("bt").unwrap();
+    cmd.args(["webhooks", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("list"))
+        .stdout(predicate::str::contains("create"))
+        .stdout(predicate::str::contains("update"))
+        .stdout(predicate::str::contains("rotate-signing-secret"));
 }
 
 #[test]
