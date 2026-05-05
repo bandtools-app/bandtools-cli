@@ -420,6 +420,17 @@ fn newsletters(
         NewslettersSubcommand::Send(args) => {
             action_by_id(client, format, "/newsletters", &args.id, "send")
         }
+        NewslettersSubcommand::Pin(args) => {
+            action_by_id(client, format, "/newsletters", &args.id, "pin")
+        }
+        NewslettersSubcommand::Unpin(args) => print_response(
+            client,
+            format,
+            Method::DELETE,
+            &format!("/newsletters/{}/pin", segment(&args.id)),
+            QueryParams::default(),
+            Body::Empty,
+        ),
         NewslettersSubcommand::Schedule(args) => {
             let body = json!({ "scheduled_for": args.scheduled_for });
             print_response(

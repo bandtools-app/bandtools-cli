@@ -251,6 +251,74 @@ async fn output_flag_takes_precedence_over_configured_output() {
 }
 
 #[tokio::test]
+async fn newsletters_pin_posts_to_pin_endpoint() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/newsletters/newsletter123/pin"))
+        .and(header("authorization", "Bearer token"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "data": {
+                "id": "newsletter123",
+                "pinned": true
+            },
+            "meta": { "request_id": "req_pin" }
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let mut cmd = Command::cargo_bin("bt").unwrap();
+    cmd.args([
+        "--api-url",
+        &server.uri(),
+        "--api-token",
+        "token",
+        "--plain",
+        "newsletters",
+        "pin",
+        "newsletter123",
+    ])
+    .assert()
+    .success()
+    .stdout(predicate::str::contains("pinned: true"))
+    .stdout(predicate::str::contains("req_pin"));
+}
+
+#[tokio::test]
+async fn newsletters_unpin_deletes_pin_endpoint() {
+    let server = MockServer::start().await;
+    Mock::given(method("DELETE"))
+        .and(path("/newsletters/newsletter123/pin"))
+        .and(header("authorization", "Bearer token"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "data": {
+                "id": "newsletter123",
+                "pinned": false
+            },
+            "meta": { "request_id": "req_unpin" }
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let mut cmd = Command::cargo_bin("bt").unwrap();
+    cmd.args([
+        "--api-url",
+        &server.uri(),
+        "--api-token",
+        "token",
+        "--plain",
+        "newsletters",
+        "unpin",
+        "newsletter123",
+    ])
+    .assert()
+    .success()
+    .stdout(predicate::str::contains("pinned: false"))
+    .stdout(predicate::str::contains("req_unpin"));
+}
+
+#[tokio::test]
 async fn api_token_cli_argument_takes_precedence_over_environment() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))

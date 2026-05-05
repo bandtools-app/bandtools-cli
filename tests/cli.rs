@@ -29,6 +29,16 @@ fn nested_help_is_available() {
 }
 
 #[test]
+fn newsletters_help_lists_pin_commands() {
+    let mut cmd = Command::cargo_bin("bt").unwrap();
+    cmd.args(["newsletters", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("pin"))
+        .stdout(predicate::str::contains("unpin"));
+}
+
+#[test]
 fn config_commands_do_not_require_token() {
     let dir = tempfile::tempdir().unwrap();
     let config = dir.path().join("config.toml");

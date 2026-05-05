@@ -8,6 +8,8 @@ The command layout is organised into resource groups and commands:
 bt subscribers list
 bt subscribers add --email-address fan@example.com
 bt newsletters list --status draft
+bt newsletters pin newsletter123
+bt newsletters unpin newsletter123
 bt account get
 ```
 

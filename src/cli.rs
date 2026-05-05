@@ -361,6 +361,8 @@ pub enum NewslettersSubcommand {
     Delete(IdArg),
     Preview(IdArg),
     Send(IdArg),
+    Pin(IdArg),
+    Unpin(IdArg),
     Schedule(ScheduleArgs),
     #[command(name = "cancel-schedule")]
     CancelSchedule(IdArg),
