@@ -36,6 +36,14 @@ pub struct Cli {
     #[arg(long, global = true, help = "Emit compact JSON")]
     pub compact_json: bool,
 
+    #[arg(
+        long,
+        global = true,
+        conflicts_with_all = ["json", "compact_json"],
+        help = "Emit plain text without TUI ornamentation"
+    )]
+    pub plain: bool,
+
     #[arg(long, global = true, help = "Disable colour in terminal output")]
     pub no_colour: bool,
 

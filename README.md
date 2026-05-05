@@ -82,6 +82,12 @@ Use `--compact-json` when scripts or piping need raw compact JSON:
 bt --compact-json subscribers list
 ```
 
+Use `--plain` when you want text output without TUI borders, logo, or colour:
+
+```sh
+bt --plain subscribers list
+```
+
 Terminal output uses colour when stdout is an interactive terminal. Use
 `--no-colour` to keep the table layout but suppress ANSI colour:
 

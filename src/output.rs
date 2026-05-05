@@ -14,6 +14,7 @@ use tui::{
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum OutputFormat {
     Json { pretty: bool },
+    Plain,
     Tui { colour: bool },
 }
 
@@ -26,6 +27,7 @@ impl OutputFormat {
             OutputFormat::Json { pretty: true } => {
                 serde_json::to_string_pretty(value).context("failed to render JSON")
             }
+            OutputFormat::Plain => render_plain(value),
             OutputFormat::Tui { colour } => {
                 render_tui(value, terminal_width(), colour && stdout_supports_colour())
             }
@@ -342,6 +344,54 @@ impl ResponseModel {
             }
         }
     }
+
+    fn render_plain(&self) -> String {
+        let mut lines = Vec::new();
+
+        match self {
+            Self::Array {
+                title,
+                rows,
+                columns,
+                ..
+            } => {
+                lines.push(title.clone());
+                if !columns.is_empty() {
+                    let widths = plain_column_widths(columns, rows);
+                    lines.push(join_plain_row(columns, &widths));
+                    lines.extend(rows.iter().map(|row| join_plain_row(row, &widths)));
+                }
+            }
+            Self::Object { title, rows, .. } => {
+                lines.push(title.clone());
+                let key_width = rows
+                    .iter()
+                    .map(|(key, _)| key.chars().count())
+                    .max()
+                    .unwrap_or(0);
+                lines.extend(
+                    rows.iter()
+                        .map(|(key, value)| format!("{key:key_width$}: {value}")),
+                );
+            }
+            Self::Text {
+                title, lines: body, ..
+            } => {
+                lines.push(title.clone());
+                lines.extend(body.iter().map(spans_to_text));
+            }
+        }
+
+        lines.push(String::new());
+        lines.push("Meta".to_string());
+        lines.extend(self.footer().iter().map(spans_to_text));
+
+        lines.join("\n")
+    }
+}
+
+fn render_plain(value: &Value) -> Result<String> {
+    Ok(ResponseModel::from_value(value)?.render_plain())
 }
 
 fn array_columns(items: &[Value]) -> Vec<String> {
@@ -462,6 +512,43 @@ fn format_value(value: &Value) -> String {
         Value::Array(values) => format!("{} item(s)", values.len()),
         Value::Object(_) => serde_json::to_string(value).unwrap_or_else(|_| "{...}".to_string()),
     }
+}
+
+fn plain_column_widths(columns: &[String], rows: &[Vec<String>]) -> Vec<usize> {
+    columns
+        .iter()
+        .enumerate()
+        .map(|(index, column)| {
+            let content_width = rows
+                .iter()
+                .filter_map(|row| row.get(index))
+                .map(|value| value.chars().count())
+                .max()
+                .unwrap_or(0);
+            column.chars().count().max(content_width)
+        })
+        .collect()
+}
+
+fn join_plain_row(row: &[String], widths: &[usize]) -> String {
+    row.iter()
+        .enumerate()
+        .map(|(index, value)| {
+            let width = widths.get(index).copied().unwrap_or(0);
+            format!("{value:width$}")
+        })
+        .collect::<Vec<_>>()
+        .join("  ")
+        .trim_end()
+        .to_string()
+}
+
+fn spans_to_text(spans: &Spans<'_>) -> String {
+    spans
+        .0
+        .iter()
+        .map(|span| span.content.as_ref())
+        .collect::<String>()
 }
 
 fn terminal_width() -> u16 {
@@ -718,6 +805,32 @@ mod tests {
             OutputFormat::Json { pretty: false }.render(&value).unwrap(),
             r#"{"data":{"ok":true}}"#
         );
+    }
+
+    #[test]
+    fn plain_output_omits_tui_ornamentation_and_colour() {
+        let value = json!({
+            "data": [
+                {
+                    "id": "sub_1",
+                    "email_address": "fan@example.com",
+                    "confirmed": true
+                }
+            ],
+            "meta": {
+                "request_id": "req_test"
+            }
+        });
+
+        let rendered = OutputFormat::Plain.render(&value).unwrap();
+
+        assert!(rendered.contains("Data: 1 item(s)"));
+        assert!(rendered.contains("fan@example.com"));
+        assert!(rendered.contains("request_id: req_test"));
+        assert!(!rendered.contains("\x1b["));
+        assert!(!rendered.contains("┌"));
+        assert!(!rendered.contains("│"));
+        assert!(!rendered.contains("└"));
     }
 
     #[test]

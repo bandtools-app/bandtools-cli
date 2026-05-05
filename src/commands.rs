@@ -20,6 +20,7 @@ pub fn run(cli: Cli) -> Result<()> {
         config: config_path,
         json,
         compact_json,
+        plain,
         no_colour,
         command,
     } = cli;
@@ -28,6 +29,8 @@ pub fn run(cli: Cli) -> Result<()> {
         OutputFormat::Json { pretty: false }
     } else if json {
         OutputFormat::Json { pretty: true }
+    } else if plain {
+        OutputFormat::Plain
     } else {
         OutputFormat::Tui { colour: !no_colour }
     };

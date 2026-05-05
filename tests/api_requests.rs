@@ -141,6 +141,40 @@ async fn compact_json_flag_returns_raw_compact_json() {
 }
 
 #[tokio::test]
+async fn plain_flag_returns_unornamented_text() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/account"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "data": {
+                "id": "test",
+                "name": "Ava Band"
+            },
+            "meta": { "request_id": "req_plain" }
+        })))
+        .mount(&server)
+        .await;
+
+    let mut cmd = Command::cargo_bin("bt").unwrap();
+    cmd.args([
+        "--api-url",
+        &server.uri(),
+        "--api-token",
+        "token",
+        "--plain",
+        "account",
+        "get",
+    ])
+    .assert()
+    .success()
+    .stdout(predicate::str::contains("Data"))
+    .stdout(predicate::str::contains("name: Ava Band"))
+    .stdout(predicate::str::contains("request_id: req_plain"))
+    .stdout(predicate::str::contains("┌").not())
+    .stdout(predicate::str::contains("\x1b[").not());
+}
+
+#[tokio::test]
 async fn api_token_cli_argument_takes_precedence_over_environment() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))
