@@ -361,8 +361,13 @@ pub enum NewslettersSubcommand {
     Get(IdArg),
     Update(UpdateByIdArgs),
     Delete(IdArg),
+    Archive(IdArg),
+    Unarchive(IdArg),
+    Duplicate(IdArg),
     Preview(IdArg),
     Send(IdArg),
+    #[command(name = "send-to-new-subscribers")]
+    SendToNewSubscribers(IdArg),
     Pin(IdArg),
     Unpin(IdArg),
     Schedule(ScheduleArgs),

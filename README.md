@@ -8,6 +8,10 @@ The command layout is organised into resource groups and commands:
 bt subscribers list
 bt subscribers add --email-address fan@example.com
 bt newsletters list --status draft
+bt newsletters duplicate newsletter123
+bt newsletters send-to-new-subscribers newsletter123
+bt newsletters archive newsletter123
+bt newsletters unarchive newsletter123
 bt newsletters pin newsletter123
 bt newsletters unpin newsletter123
 bt webhooks list

@@ -36,7 +36,11 @@ fn newsletters_help_lists_pin_commands() {
         .assert()
         .success()
         .stdout(predicate::str::contains("pin"))
-        .stdout(predicate::str::contains("unpin"));
+        .stdout(predicate::str::contains("unpin"))
+        .stdout(predicate::str::contains("archive"))
+        .stdout(predicate::str::contains("unarchive"))
+        .stdout(predicate::str::contains("duplicate"))
+        .stdout(predicate::str::contains("send-to-new-subscribers"));
 }
 
 #[test]

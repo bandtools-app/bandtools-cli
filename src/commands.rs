@@ -415,12 +415,33 @@ fn newsletters(
         NewslettersSubcommand::Delete(args) => {
             delete_by_id(client, format, "/newsletters", &args.id)
         }
+        NewslettersSubcommand::Archive(args) => {
+            action_by_id(client, format, "/newsletters", &args.id, "archive")
+        }
+        NewslettersSubcommand::Unarchive(args) => print_response(
+            client,
+            format,
+            Method::DELETE,
+            &format!("/newsletters/{}/archive", segment(&args.id)),
+            QueryParams::default(),
+            Body::Empty,
+        ),
+        NewslettersSubcommand::Duplicate(args) => {
+            action_by_id(client, format, "/newsletters", &args.id, "duplicate")
+        }
         NewslettersSubcommand::Preview(args) => {
             action_by_id(client, format, "/newsletters", &args.id, "preview")
         }
         NewslettersSubcommand::Send(args) => {
             action_by_id(client, format, "/newsletters", &args.id, "send")
         }
+        NewslettersSubcommand::SendToNewSubscribers(args) => action_by_id(
+            client,
+            format,
+            "/newsletters",
+            &args.id,
+            "send-to-new-subscribers",
+        ),
         NewslettersSubcommand::Pin(args) => {
             action_by_id(client, format, "/newsletters", &args.id, "pin")
         }

@@ -319,6 +319,144 @@ async fn newsletters_unpin_deletes_pin_endpoint() {
 }
 
 #[tokio::test]
+async fn newsletters_archive_posts_to_archive_endpoint() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/newsletters/newsletter123/archive"))
+        .and(header("authorization", "Bearer token"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "data": {
+                "id": "newsletter123",
+                "public": true
+            },
+            "meta": { "request_id": "req_archive" }
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let mut cmd = Command::cargo_bin("bt").unwrap();
+    cmd.args([
+        "--api-url",
+        &server.uri(),
+        "--api-token",
+        "token",
+        "--plain",
+        "newsletters",
+        "archive",
+        "newsletter123",
+    ])
+    .assert()
+    .success()
+    .stdout(predicate::str::contains("public: true"))
+    .stdout(predicate::str::contains("req_archive"));
+}
+
+#[tokio::test]
+async fn newsletters_unarchive_deletes_archive_endpoint() {
+    let server = MockServer::start().await;
+    Mock::given(method("DELETE"))
+        .and(path("/newsletters/newsletter123/archive"))
+        .and(header("authorization", "Bearer token"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "data": {
+                "id": "newsletter123",
+                "public": false,
+                "pinned": false
+            },
+            "meta": { "request_id": "req_unarchive" }
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let mut cmd = Command::cargo_bin("bt").unwrap();
+    cmd.args([
+        "--api-url",
+        &server.uri(),
+        "--api-token",
+        "token",
+        "--plain",
+        "newsletters",
+        "unarchive",
+        "newsletter123",
+    ])
+    .assert()
+    .success()
+    .stdout(predicate::str::contains("public: false"))
+    .stdout(predicate::str::contains("req_unarchive"));
+}
+
+#[tokio::test]
+async fn newsletters_duplicate_posts_to_duplicate_endpoint() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/newsletters/newsletter123/duplicate"))
+        .and(header("authorization", "Bearer token"))
+        .respond_with(ResponseTemplate::new(201).set_body_json(json!({
+            "data": {
+                "id": "newsletter456",
+                "subject": "Tour announcement copy",
+                "status": "draft"
+            },
+            "meta": { "request_id": "req_duplicate" }
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let mut cmd = Command::cargo_bin("bt").unwrap();
+    cmd.args([
+        "--api-url",
+        &server.uri(),
+        "--api-token",
+        "token",
+        "--plain",
+        "newsletters",
+        "duplicate",
+        "newsletter123",
+    ])
+    .assert()
+    .success()
+    .stdout(predicate::str::contains("newsletter456"))
+    .stdout(predicate::str::contains("req_duplicate"));
+}
+
+#[tokio::test]
+async fn newsletters_send_to_new_subscribers_posts_to_action_endpoint() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/newsletters/newsletter123/send-to-new-subscribers"))
+        .and(header("authorization", "Bearer token"))
+        .respond_with(ResponseTemplate::new(202).set_body_json(json!({
+            "data": {
+                "status": "queued",
+                "new_subscribers_count": 12
+            },
+            "meta": { "request_id": "req_send_new" }
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let mut cmd = Command::cargo_bin("bt").unwrap();
+    cmd.args([
+        "--api-url",
+        &server.uri(),
+        "--api-token",
+        "token",
+        "--plain",
+        "newsletters",
+        "send-to-new-subscribers",
+        "newsletter123",
+    ])
+    .assert()
+    .success()
+    .stdout(predicate::str::contains("new_subscribers_count: 12"))
+    .stdout(predicate::str::contains("req_send_new"));
+}
+
+#[tokio::test]
 async fn webhooks_list_sends_pagination_query_params() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))
