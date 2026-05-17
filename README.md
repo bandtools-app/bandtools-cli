@@ -21,6 +21,23 @@ bt account get
 
 ## Installation
 
+Install the latest macOS or Linux release:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/bandtools-app/bandtools-cli/main/scripts/install.sh | sh
+```
+
+The installer detects your operating system and CPU architecture, downloads
+the matching GitHub release asset, and installs `bt` into `/usr/local/bin` when
+it is writable, otherwise `~/.local/bin`.
+
+Customise the install with environment variables:
+
+```sh
+BT_INSTALL_DIR="$HOME/bin" sh scripts/install.sh
+BT_INSTALL_VERSION="v0.1.0" sh scripts/install.sh
+```
+
 Build from this repository:
 
 ```sh

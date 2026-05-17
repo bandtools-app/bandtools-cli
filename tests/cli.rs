@@ -168,7 +168,9 @@ fn api_commands_require_token() {
     let config = dir.path().join("config.toml");
 
     let mut cmd = Command::cargo_bin("bt").unwrap();
-    cmd.args(["--config", config.to_str().unwrap(), "subscribers", "list"])
+    cmd.env_remove("BANDTOOLS_API_TOKEN")
+        .env_remove("BT_API_TOKEN")
+        .args(["--config", config.to_str().unwrap(), "subscribers", "list"])
         .assert()
         .failure()
         .stderr(predicate::str::contains("missing BandTools API token"));
