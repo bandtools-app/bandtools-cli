@@ -17,6 +17,7 @@ bt newsletters unpin newsletter123
 bt webhooks list
 bt webhooks create --data '{"name":"Production sync","url":"https://hooks.example.com/bandtools","event_types":["newsletter.sent"]}'
 bt account get
+bt --plain account get
 ```
 
 ## Installation

@@ -183,7 +183,13 @@ async fn configured_plain_output_is_used_without_an_output_flag() {
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
             "data": {
                 "id": "test",
-                "name": "Ava Band"
+                "name": "Ava Band",
+                "features": {
+                    "automatic_newsletters": true,
+                    "duplicate_newsletter": true,
+                    "subscriber_limit": 1000,
+                    "unlimited_newsletters": true
+                }
             },
             "meta": { "request_id": "req_config_plain" }
         })))
@@ -205,7 +211,8 @@ async fn configured_plain_output_is_used_without_an_output_flag() {
     cmd.args(["--config", config.to_str().unwrap(), "account", "get"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("name: Ava Band"))
+        .stdout(predicate::str::contains("name    : Ava Band"))
+        .stdout(predicate::str::contains("\"subscriber_limit\":1000"))
         .stdout(predicate::str::contains("req_config_plain"))
         .stdout(predicate::str::contains("┌").not())
         .stdout(predicate::str::contains("\x1b[").not());
