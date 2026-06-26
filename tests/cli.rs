@@ -44,6 +44,25 @@ fn newsletters_help_lists_pin_commands() {
 }
 
 #[test]
+fn account_help_lists_social_links_command() {
+    let mut account = Command::cargo_bin("bt").unwrap();
+    account
+        .args(["account", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("social-links"));
+
+    let mut social_links = Command::cargo_bin("bt").unwrap();
+    social_links
+        .args(["account", "social-links", "update", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--bandcamp"))
+        .stdout(predicate::str::contains("--bluesky"))
+        .stdout(predicate::str::contains("--clear"));
+}
+
+#[test]
 fn webhooks_help_lists_webhook_commands() {
     let mut cmd = Command::cargo_bin("bt").unwrap();
     cmd.args(["webhooks", "--help"])

@@ -208,6 +208,8 @@ pub enum AccountSubcommand {
     Get,
     #[command(about = "Update the current account")]
     Update(JsonBodyArgs),
+    #[command(name = "social-links", about = "Manage account social profile links")]
+    SocialLinks(SocialLinksCommand),
     #[command(about = "Manage the account picture")]
     Picture(PictureCommand),
     #[command(about = "Manage app settings")]
@@ -220,6 +222,73 @@ pub enum AccountSubcommand {
     Pages(PagesCommand),
     #[command(name = "confirmation-email", about = "Manage the confirmation email")]
     ConfirmationEmail(ConfirmationEmailCommand),
+}
+
+#[derive(Debug, Args)]
+pub struct SocialLinksCommand {
+    #[command(subcommand)]
+    pub command: SocialLinksSubcommand,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum SocialLinksSubcommand {
+    #[command(about = "List account social profile links")]
+    Get,
+    #[command(about = "Update account social profile links")]
+    Update(Box<SocialLinksUpdateArgs>),
+}
+
+#[derive(Debug, Args)]
+pub struct SocialLinksUpdateArgs {
+    #[arg(long, help = "Bandcamp profile URL")]
+    pub bandcamp: Option<String>,
+    #[arg(long, help = "Bluesky profile URL")]
+    pub bluesky: Option<String>,
+    #[arg(long, help = "Facebook profile URL")]
+    pub facebook: Option<String>,
+    #[arg(long, help = "Instagram profile URL")]
+    pub instagram: Option<String>,
+    #[arg(long, help = "SoundCloud profile URL")]
+    pub soundcloud: Option<String>,
+    #[arg(long, help = "Spotify profile URL")]
+    pub spotify: Option<String>,
+    #[arg(long, help = "TikTok profile URL")]
+    pub tiktok: Option<String>,
+    #[arg(long, help = "X profile URL")]
+    pub x: Option<String>,
+    #[arg(long, help = "YouTube profile URL")]
+    pub youtube: Option<String>,
+    #[arg(long, value_enum, help = "Clear a social profile link")]
+    pub clear: Vec<SocialPlatform>,
+}
+
+#[derive(Debug, ValueEnum, Clone, Copy, PartialEq, Eq)]
+pub enum SocialPlatform {
+    Bandcamp,
+    Bluesky,
+    Facebook,
+    Instagram,
+    Soundcloud,
+    Spotify,
+    Tiktok,
+    X,
+    Youtube,
+}
+
+impl SocialPlatform {
+    pub fn key(self) -> &'static str {
+        match self {
+            Self::Bandcamp => "bandcamp",
+            Self::Bluesky => "bluesky",
+            Self::Facebook => "facebook",
+            Self::Instagram => "instagram",
+            Self::Soundcloud => "soundcloud",
+            Self::Spotify => "spotify",
+            Self::Tiktok => "tiktok",
+            Self::X => "x",
+            Self::Youtube => "youtube",
+        }
+    }
 }
 
 #[derive(Debug, Args)]

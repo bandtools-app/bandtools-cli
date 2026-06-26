@@ -84,6 +84,121 @@ async fn account_update_wraps_unwrapped_body() {
 }
 
 #[tokio::test]
+async fn account_social_links_get_returns_social_links_from_account() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/account"))
+        .and(header("authorization", "Bearer token"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "data": {
+                "id": "test",
+                "name": "Ava Band",
+                "social_links": {
+                    "bandcamp": "https://ava.example.com",
+                    "instagram": "https://instagram.example.com/ava"
+                }
+            },
+            "meta": { "request_id": "req_social_get" }
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let mut cmd = Command::cargo_bin("bt").unwrap();
+    cmd.args([
+        "--api-url",
+        &server.uri(),
+        "--api-token",
+        "token",
+        "--compact-json",
+        "account",
+        "social-links",
+        "get",
+    ])
+    .assert()
+    .success()
+    .stdout(predicate::eq(
+        r#"{"data":{"bandcamp":"https://ava.example.com","instagram":"https://instagram.example.com/ava"},"meta":{"request_id":"req_social_get"}}"#
+            .to_string()
+            + "\n",
+    ));
+}
+
+#[tokio::test]
+async fn account_social_links_update_patches_social_links() {
+    let server = MockServer::start().await;
+    Mock::given(method("PATCH"))
+        .and(path("/account"))
+        .and(header("authorization", "Bearer token"))
+        .and(body_json(json!({
+            "account": {
+                "social_links": {
+                    "bandcamp": "https://ava.example.com",
+                    "bluesky": "https://bsky.app/profile/ava.example.com",
+                    "instagram": null,
+                    "x": "https://x.com/ava"
+                }
+            }
+        })))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "data": {
+                "id": "test",
+                "social_links": {
+                    "bandcamp": "https://ava.example.com",
+                    "bluesky": "https://bsky.app/profile/ava.example.com",
+                    "x": "https://x.com/ava"
+                }
+            },
+            "meta": { "request_id": "req_social_update" }
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let mut cmd = Command::cargo_bin("bt").unwrap();
+    cmd.args([
+        "--api-url",
+        &server.uri(),
+        "--api-token",
+        "token",
+        "--plain",
+        "account",
+        "social-links",
+        "update",
+        "--bandcamp",
+        "https://ava.example.com",
+        "--bluesky",
+        "https://bsky.app/profile/ava.example.com",
+        "--x",
+        "https://x.com/ava",
+        "--clear",
+        "instagram",
+    ])
+    .assert()
+    .success()
+    .stdout(predicate::str::contains("req_social_update"));
+}
+
+#[test]
+fn account_social_links_update_requires_a_change() {
+    let mut cmd = Command::cargo_bin("bt").unwrap();
+    cmd.args([
+        "--api-url",
+        "http://localhost:3000/api/v1",
+        "--api-token",
+        "token",
+        "account",
+        "social-links",
+        "update",
+    ])
+    .assert()
+    .failure()
+    .stderr(predicate::str::contains(
+        "social-links update requires at least one platform URL or --clear",
+    ));
+}
+
+#[tokio::test]
 async fn json_flag_returns_pretty_json() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))

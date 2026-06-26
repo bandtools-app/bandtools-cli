@@ -4,7 +4,7 @@ use anyhow::{Result, bail};
 use clap::CommandFactory;
 use clap_complete::generate;
 use reqwest::Method;
-use serde_json::{Value, json};
+use serde_json::{Map, Value, json};
 
 use crate::{
     api::{ApiClient, Body, QueryParams, ensure_no_body, json_from_data, response_json},
@@ -240,6 +240,7 @@ fn account(client: &ApiClient, format: OutputFormat, command: AccountCommand) ->
             Body::Empty,
         ),
         AccountSubcommand::Update(args) => patch_json(client, format, "/account", "account", args),
+        AccountSubcommand::SocialLinks(command) => account_social_links(client, format, command),
         AccountSubcommand::Picture(command) => match command.command {
             PictureSubcommand::Get => print_response(
                 client,
@@ -285,6 +286,90 @@ fn account(client: &ApiClient, format: OutputFormat, command: AccountCommand) ->
             "confirmation_email",
             command.command,
         ),
+    }
+}
+
+fn account_social_links(
+    client: &ApiClient,
+    format: OutputFormat,
+    command: SocialLinksCommand,
+) -> Result<()> {
+    match command.command {
+        SocialLinksSubcommand::Get => {
+            let response = client.request(
+                Method::GET,
+                "/account",
+                &QueryParams::default(),
+                Body::Empty,
+            )?;
+            let mut value = response_json(response);
+            let social_links = value
+                .pointer("/data/social_links")
+                .cloned()
+                .unwrap_or_else(|| json!({}));
+            if let Some(object) = value.as_object_mut() {
+                object.insert("data".to_string(), social_links);
+            }
+            print_value(format, &value)
+        }
+        SocialLinksSubcommand::Update(args) => {
+            let social_links = social_links_body(*args)?;
+            let body = json!({ "account": { "social_links": social_links } });
+            print_response(
+                client,
+                format,
+                Method::PATCH,
+                "/account",
+                QueryParams::default(),
+                Body::Json(&body),
+            )
+        }
+    }
+}
+
+fn social_links_body(args: SocialLinksUpdateArgs) -> Result<Value> {
+    let SocialLinksUpdateArgs {
+        bandcamp,
+        bluesky,
+        facebook,
+        instagram,
+        soundcloud,
+        spotify,
+        tiktok,
+        x,
+        youtube,
+        clear,
+    } = args;
+
+    let mut social_links = Map::new();
+    push_social_link(&mut social_links, "bandcamp", bandcamp);
+    push_social_link(&mut social_links, "bluesky", bluesky);
+    push_social_link(&mut social_links, "facebook", facebook);
+    push_social_link(&mut social_links, "instagram", instagram);
+    push_social_link(&mut social_links, "soundcloud", soundcloud);
+    push_social_link(&mut social_links, "spotify", spotify);
+    push_social_link(&mut social_links, "tiktok", tiktok);
+    push_social_link(&mut social_links, "x", x);
+    push_social_link(&mut social_links, "youtube", youtube);
+
+    for platform in clear {
+        let key = platform.key();
+        if social_links.contains_key(key) {
+            bail!("cannot set and clear {key} in the same command");
+        }
+        social_links.insert(key.to_string(), Value::Null);
+    }
+
+    if social_links.is_empty() {
+        bail!("social-links update requires at least one platform URL or --clear");
+    }
+
+    Ok(Value::Object(social_links))
+}
+
+fn push_social_link(social_links: &mut Map<String, Value>, key: &str, value: Option<String>) {
+    if let Some(value) = value {
+        social_links.insert(key.to_string(), Value::String(value));
     }
 }
 

@@ -17,6 +17,7 @@ bt newsletters unpin newsletter123
 bt webhooks list
 bt webhooks create --data '{"name":"Production sync","url":"https://hooks.example.com/bandtools","event_types":["newsletter.sent"]}'
 bt account get
+bt account social-links update --instagram https://instagram.example.com/artist --clear x
 bt --plain account get
 ```
 
@@ -86,6 +87,7 @@ file:
 
 ```sh
 bt account update --data '{"name":"New Artist Name"}'
+bt account social-links update --bandcamp https://artist.example.com --youtube https://youtube.example.com/@artist
 bt newsletters create --data-file newsletter.json
 ```
 
