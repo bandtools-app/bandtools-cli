@@ -1,5 +1,7 @@
 # BandTools CLI
 
+[![CI](https://github.com/bandtools-app/bandtools-cli/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/bandtools-app/bandtools-cli/actions/workflows/ci.yml)
+
 `bt` is a Rust command line interface for the BandTools REST API.
 
 The command layout is organised into resource groups and commands:
