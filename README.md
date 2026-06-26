@@ -37,7 +37,7 @@ Customise the install with environment variables:
 
 ```sh
 BT_INSTALL_DIR="$HOME/bin" sh scripts/install.sh
-BT_INSTALL_VERSION="v0.1.0" sh scripts/install.sh
+BT_INSTALL_VERSION="v0.2.0" sh scripts/install.sh
 ```
 
 Build from this repository:
