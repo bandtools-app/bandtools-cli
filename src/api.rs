@@ -119,6 +119,7 @@ impl ApiClient {
         path: &str,
         field: &str,
         file: PathBuf,
+        content_type: Option<&str>,
     ) -> Result<ApiResponse> {
         let url = self.url(path, &QueryParams::default())?;
         let filename = file
@@ -129,6 +130,12 @@ impl ApiClient {
         let part = multipart::Part::file(&file)
             .with_context(|| format!("failed to read upload file {}", file.display()))?
             .file_name(filename);
+        let part = if let Some(content_type) = content_type {
+            part.mime_str(content_type)
+                .with_context(|| format!("invalid upload content type {content_type}"))?
+        } else {
+            part
+        };
         let form = multipart::Form::new().part(field.to_string(), part);
 
         let response = self

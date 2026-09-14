@@ -19,6 +19,15 @@ fn top_level_help_lists_command_groups() {
 }
 
 #[test]
+fn attachment_upload_help_describes_content_type_override() {
+    let mut cmd = Command::cargo_bin("bt").unwrap();
+    cmd.args(["newsletters", "attachments", "upload", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--content-type"));
+}
+
+#[test]
 fn nested_help_is_available() {
     let mut cmd = Command::cargo_bin("bt").unwrap();
     cmd.args(["subscribers", "list", "--help"])

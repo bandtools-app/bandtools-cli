@@ -536,7 +536,19 @@ pub struct AttachmentsCommand {
 
 #[derive(Debug, Subcommand)]
 pub enum AttachmentsSubcommand {
-    Upload(FileArg),
+    Upload(AttachmentUploadArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct AttachmentUploadArgs {
+    #[arg(long, value_name = "PATH", help = "File to upload")]
+    pub file: PathBuf,
+    #[arg(
+        long,
+        value_name = "MIME_TYPE",
+        help = "Override the inferred content type"
+    )]
+    pub content_type: Option<String>,
 }
 
 #[derive(Debug, Args)]

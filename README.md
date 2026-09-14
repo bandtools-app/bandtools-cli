@@ -12,6 +12,7 @@ bt subscribers add --email-address fan@example.com
 bt newsletters list --status draft
 bt newsletters duplicate newsletter123
 bt newsletters send-to-new-subscribers newsletter123
+bt newsletters attachments upload --file poster.jpg
 bt newsletters archive newsletter123
 bt newsletters unarchive newsletter123
 bt newsletters pin newsletter123
@@ -96,6 +97,22 @@ bt newsletters create --data-file newsletter.json
 For resource-specific wrappers such as `account`, `settings`, `theme`, and
 `automatic_newsletter`, `bt` accepts either the wrapped API shape or the
 unwrapped object and wraps it automatically.
+
+When updating a shared newsletter draft as a collaborator, include the
+`lock_version` returned by `newsletters get`. Owners may omit it:
+
+```sh
+bt newsletters update newsletter123 --data '{"subject":"Updated","lock_version":7}'
+```
+
+Newsletter attachments support PDF, JPEG, PNG, GIF, WebP, MP3, MP4, and MPEG
+video files up to 20 MiB. The content type is inferred from the filename; pass
+`--content-type audio/mp4` for MP4 audio or a file without a recognised
+extension.
+
+```sh
+bt newsletters attachments upload --file track.bin --content-type audio/mp4
+```
 
 ## Output
 

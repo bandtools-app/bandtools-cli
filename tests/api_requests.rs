@@ -4,7 +4,7 @@ use serde_json::json;
 use std::fs;
 use wiremock::{
     Mock, MockServer, ResponseTemplate,
-    matchers::{body_json, header, method, path, query_param},
+    matchers::{body_json, body_string_contains, header, method, path, query_param},
 };
 
 #[tokio::test]
@@ -81,6 +81,45 @@ async fn account_update_wraps_unwrapped_body() {
         .assert()
         .success()
         .stdout(predicate::str::contains("req_update"));
+}
+
+#[tokio::test]
+async fn newsletter_attachment_upload_supports_content_type_override() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/newsletters/attachments"))
+        .and(header("authorization", "Bearer token"))
+        .and(body_string_contains("Content-Type: audio/mp4"))
+        .respond_with(ResponseTemplate::new(201).set_body_json(json!({
+            "data": { "id": "att_123", "content_type": "audio/mp4" },
+            "meta": { "request_id": "req_attachment" }
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let directory = tempfile::tempdir().unwrap();
+    let file = directory.path().join("track.bin");
+    fs::write(&file, b"audio-bytes").unwrap();
+
+    let mut cmd = Command::cargo_bin("bt").unwrap();
+    cmd.args([
+        "--api-url",
+        &server.uri(),
+        "--api-token",
+        "token",
+        "--plain",
+        "newsletters",
+        "attachments",
+        "upload",
+        "--file",
+        file.to_str().unwrap(),
+        "--content-type",
+        "audio/mp4",
+    ])
+    .assert()
+    .success()
+    .stdout(predicate::str::contains("att_123"));
 }
 
 #[tokio::test]

@@ -201,7 +201,7 @@ fn subscribers(
             ImportsSubcommand::Create(args) => {
                 if let Some(file) = args.file {
                     let response =
-                        client.multipart_post_file("/subscribers/imports", "file", file)?;
+                        client.multipart_post_file("/subscribers/imports", "file", file, None)?;
                     print_value(format, &response_json(response))
                 } else if !args.email_address.is_empty() {
                     let body = json!({ "email_addresses": args.email_address });
@@ -561,8 +561,12 @@ fn newsletters(
         NewslettersSubcommand::Lock(command) => locks(client, format, command),
         NewslettersSubcommand::Attachments(command) => match command.command {
             AttachmentsSubcommand::Upload(args) => {
-                let response =
-                    client.multipart_post_file("/newsletters/attachments", "file", args.file)?;
+                let response = client.multipart_post_file(
+                    "/newsletters/attachments",
+                    "file",
+                    args.file,
+                    args.content_type.as_deref(),
+                )?;
                 print_value(format, &response_json(response))
             }
         },
