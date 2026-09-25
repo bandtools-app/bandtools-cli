@@ -10,6 +10,8 @@ use serde_json::Value;
 
 use crate::config::ResolvedConfig;
 
+const UPLOAD_TIMEOUT: Duration = Duration::from_secs(120);
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct QueryParams(Vec<(String, String)>);
 
@@ -108,6 +110,7 @@ impl ApiClient {
             .request(Method::PUT, url)
             .header(AUTHORIZATION, format!("Bearer {}", self.token))
             .header(ACCEPT, "application/json")
+            .timeout(UPLOAD_TIMEOUT)
             .multipart(form)
             .send()
             .context("request failed")?;
@@ -143,6 +146,7 @@ impl ApiClient {
             .post(url)
             .header(AUTHORIZATION, format!("Bearer {}", self.token))
             .header(ACCEPT, "application/json")
+            .timeout(UPLOAD_TIMEOUT)
             .multipart(form)
             .send()
             .context("request failed")?;

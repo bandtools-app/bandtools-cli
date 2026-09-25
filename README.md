@@ -98,6 +98,12 @@ For resource-specific wrappers such as `account`, `settings`, `theme`, and
 `automatic_newsletter`, `bt` accepts either the wrapped API shape or the
 unwrapped object and wraps it automatically.
 
+Newsletter creation accepts `scheduled_for` when the account has the
+scheduling feature. The time must be in the future, on a whole hour, and within
+32 days. Attachment references in `message` must use the opaque id returned by
+the attachment upload command; native Action Text or Trix payloads are
+rejected.
+
 When updating a shared newsletter draft as a collaborator, include the
 `lock_version` returned by `newsletters get`. Owners may omit it:
 
@@ -108,7 +114,7 @@ bt newsletters update newsletter123 --data '{"subject":"Updated","lock_version":
 Newsletter attachments support PDF, JPEG, PNG, GIF, WebP, MP3, MP4, and MPEG
 video files up to 20 MiB. The content type is inferred from the filename; pass
 `--content-type audio/mp4` for MP4 audio or a file without a recognised
-extension.
+extension. Uploads allow up to 120 seconds by default.
 
 ```sh
 bt newsletters attachments upload --file track.bin --content-type audio/mp4
